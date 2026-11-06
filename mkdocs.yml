@@ -1,0 +1,87 @@
+site_name: VinilHero
+site_description: Loja de discos que se move com a sua performance no Fretshift — documentação do projeto
+site_author: LCavarcan
+docs_dir: docs
+copyright: VinilHero — licença MIT
+
+theme:
+  name: material
+  language: pt-BR
+  icon:
+    logo: material/album
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Modo claro
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Modo escuro
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - toc.follow
+    - search.suggest
+    - content.tabs.link
+    - content.code.copy
+
+plugins:
+  - search:
+      lang: pt
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Início:
+      - index.md
+      - Glossário: glossario.md
+  - Design do jogo:
+      - design/index.md
+      - Performance e movimento: design/performance.md
+      - Progressão e economia: design/progressao.md
+      - Eventos: design/eventos.md
+  - Arquitetura:
+      - arquitetura/index.md
+      - Integração com o Fretshift: arquitetura/integracao.md
+      - Simulação: arquitetura/simulacao.md
+      - Dados e arquivos: arquitetura/dados.md
+  - Decisões:
+      - decisoes/index.md
+  - Roteiro:
+      - roteiro/index.md
+      - "1. Fundação e leitura do Fretshift": roteiro/etapa1.md
+      - "2. Loja jogável (MVP)": roteiro/etapa2.md
+      - "3. Clientes, estoque e eventos": roteiro/etapa3.md
+      - "4. Loja ao vivo": roteiro/etapa4.md
+      - "5. Lojas rivais": roteiro/etapa5.md
