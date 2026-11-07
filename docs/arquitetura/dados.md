@@ -55,7 +55,10 @@ Todos gravados com escrita atômica (`.tmp` + renomear), com o mesmo `store.js` 
 | Campo | Observação |
 |---|---|
 | `version` | sobe a cada mudança de formato; `saveFormat.js` tem `migrate(save)` de versão em versão |
+| `day.period` | `morning`, `afternoon`, `night`; depois da noite `closing` (falta o acerto) e, depois do acerto, `closed` (falta abrir o dia seguinte) |
 | `pending` | `null` quando não há espera; `since` é a hora do VinilHero em que a escolha foi feita |
+| `records[id].section` | id da seção, `storage` (depósito, [D-12](../decisoes/index.md#d-12-deposito-para-o-que-nao-cabe-na-prateleira)) ou `null` (disco que só apareceu no histórico de partidas e ainda não está na biblioteca) |
+| `historyImported` | o histórico anterior já foi importado (só acontece na primeira abertura) |
 | `records` | só o que é do VinilHero (seção, estoque, histórico). Título, artista, bpm vêm do `records-cache.json` |
 | `processedPlays` | ids do `scores.json`; cresce devagar (uma partida por música tocada) |
 | `history` | um item por dia fechado, para o gráfico de evolução |

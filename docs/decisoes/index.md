@@ -96,6 +96,49 @@ página).
 - **Por quê:** os amigos e o ranking com `chart_hash` já existem; criar outro servidor duplicaria
   contas e amizades.
 
+### D-12 · Depósito para o que não cabe na prateleira
+
+- **Contexto:** cada seção começa com uma prateleira de 8 discos, mas uma biblioteca pode ter muito
+  mais discos de uma seção. O design não dizia o que acontece com o disco que não cabe.
+- **Alternativas:** prateleira sem limite (a Prateleira extra perderia o sentido); o limite só valer
+  para o "cliente olha a prateleira" (efeito invisível).
+- **Escolha:** um **depósito**. Disco novo vai para a seção sugerida se couber; senão, para o depósito.
+  Disco no depósito não pode ser escolhido e os clientes não o veem. A jogadora arrasta discos entre
+  seções e depósito.
+- **Por quê:** dá uma decisão de vitrine (o que fica exposto) e um motivo claro para comprar prateleiras.
+- :material-help-circle: **A revisar** depois de jogar: se arrumar prateleira ficar chato.
+
+### D-13 · Calibragem da etapa 2
+
+- **Contexto:** com os números iniciais, o simulador mostrou: só pôr pra tocar dava prejuízo
+  (−R$ 35/dia), P ≈ 0,5 lucrava R$ 45 (meta R$ 150), P ≈ 0,8 em Expert lucrava R$ 1 394 (meta
+  R$ 350) e a reputação chegava a 50 no dia 9 (meta ~25).
+- **Achados:**
+    - De passivo a P 0,5 o faturamento precisa subir 2,25×, mas de P 0,5 a P 0,8 só 1,74×: a curva
+      tem que ser mais forte embaixo que em cima.
+    - Com a redução linear da reputação (`× (1 − r/150)`), não dá para chegar a 25 na 1ª semana **e**
+      a 50 só na 4ª sem travar a reputação perto de 62 (aí "Lendária", 75, ficaria impossível). Com a
+      redução ao quadrado, `× (1 − r/120)²`, as duas metas fecham e 75 continua alcançável (~7 semanas).
+    - Com o Expert nas metas de lucro, a única saída seria o Expert render menos por cliente que o
+      Médio, contra o pilar "Expert ganha clientes melhores". As metas de lucro passaram a valer para o
+      Médio, e o Expert ganhou metas próprias (×1,2 a ×1,6 o Médio; Fácil perfeito ≈ Expert 0,7).
+- **Mudanças** (`src/core/balance.js`):
+
+    | Número | Antes | Depois |
+    |---|---|---|
+    | movimento por desempenho | `0,3 + 1,4·P` | `0,6 + 0,9·P` |
+    | base `B` | `6 + reputação/5` | `6 + reputação/10` |
+    | dificuldade (Difícil, Expert) | 1,1 · 1,2 | 1,05 · 1,1 |
+    | "só pôr pra tocar" no movimento | 1,0 | 0,72 |
+    | chance de compra por desempenho | `0,5 + 0,5·P` | `0,75 + 0,25·P` |
+    | chance base: músico, colecionador | 0,55 · 0,60 | 0,40 · 0,35 |
+    | preços (curioso, fã, músico, colecionador, karaokeiro) | 25–40 · 35–60 · 40–70 · 80–200 · 30–50 | 40–60 · 55–85 · 50–80 · 80–140 · 40–65 |
+    | reputação | `(P − 0,45)·6`, ganho `× (1 − r/150)` | `(P − 0,35)·2,7`, ganho `× (1 − r/120)²` |
+
+- **Resultado:** todas as metas no alvo ([tabela](../design/progressao.md#metas-de-ritmo-para-a-calibragem)).
+- **Consequência:** tocar muito bem rende ~3× tocar muito mal numa apresentação (antes ~5×); a
+  diferença cresce com os dias pela reputação. O pilar 1 da [Visão](../index.md) foi atualizado.
+
 ## Para a usuária decidir :material-help-circle:
 
 | Pergunta | Proposta atual |
@@ -105,4 +148,6 @@ página).
 | Moeda | R$, valores de "loja de bairro" |
 | Seções | Rock e Metal, Pop, Brasil, Eletrônica, Soul e Funk, Variados |
 | Repetir apresentação | não (D-04); talvez a melhoria "Ensaio" |
+| Diferença entre tocar mal e bem | ~3× por apresentação depois da calibragem (era ~5×); ver D-13 |
+| Depósito | disco que não cabe fica fora da venda (D-12) |
 | Música ambiente da loja | tocar a prévia (`previewStartMs`) do disco escolhido na tela de escolha? |

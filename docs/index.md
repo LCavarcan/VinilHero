@@ -16,7 +16,8 @@ flowchart LR
 ## Pilares
 
 1. **A performance é o motor.** Tocar bem precisa *se sentir* na loja: mais gente, fila na porta,
-   caixa tocando. A diferença entre tocar mal e tocar bem é grande e visível (cerca de 5×).
+   caixa tocando. A diferença entre tocar mal e tocar bem é grande e visível: cerca de 3× no
+   faturamento de uma apresentação, e mais com o tempo, porque tocar bem deixa a loja famosa.
 2. **Sua biblioteca é o jogo.** Nenhum disco é inventado: cada disco é uma música que você gerou no
    Fretshift. Variar o repertório é recompensado.
 3. **Leve e por turnos.** O dia da loja anda por apresentações, não pelo relógio. Dá para jogar uma

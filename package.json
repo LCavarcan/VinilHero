@@ -11,7 +11,8 @@
   "scripts": {
     "start": "electron .",
     "test": "eslint . && node --test",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "simular": "node src/cli/simular.js"
   },
   "author": "LCavarcan",
   "license": "MIT",

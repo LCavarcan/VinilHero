@@ -22,11 +22,11 @@ export const BALANCE = deepFreeze({
   visitors: {
     // B = base + reputação / reputationDivisor
     base: 6,
-    reputationDivisor: 5,
-    // 0,3 + 1,4·P
-    performanceMin: 0.3,
-    performanceSlope: 1.4,
-    difficulty: { Easy: 0.9, Medium: 1.0, Hard: 1.1, Expert: 1.2, passive: 1.0 },
+    reputationDivisor: 10,
+    // 0,6 + 0,9·P
+    performanceMin: 0.6,
+    performanceSlope: 0.9,
+    difficulty: { Easy: 0.9, Medium: 1.0, Hard: 1.05, Expert: 1.1, passive: 0.72 },
     // 1ª, 2ª, 3ª em diante no mesmo dia
     repetition: [1.0, 0.6, 0.35],
     period: { morning: 0.7, afternoon: 1.0, night: 1.3 },
@@ -48,11 +48,11 @@ export const BALANCE = deepFreeze({
 
   purchase: {
     // chance = base · afinidade · (0,5 + 0,5·P) · vitrine
-    base: { curious: 0.25, sectionFan: 0.45, musician: 0.55, collector: 0.6, karaoke: 0.5, critic: 0 },
+    base: { curious: 0.25, sectionFan: 0.45, musician: 0.4, collector: 0.35, karaoke: 0.5, critic: 0 },
     affinityHigh: 1.4,
     affinityLow: 0.6,
-    performanceMin: 0.5,
-    performanceSlope: 0.5,
+    performanceMin: 0.75,
+    performanceSlope: 0.25,
     // músico não compra abaixo disso
     musicianMinP: 0.7,
     // chance de levar o próprio disco tocado (senão, outro da mesma seção)
@@ -61,13 +61,14 @@ export const BALANCE = deepFreeze({
 
   reputation: {
     // Δ = (P − pivot) · scale, × criticFactor se houver crítico
-    pivot: 0.45,
-    scale: 6,
+    pivot: 0.35,
+    scale: 2.7,
     criticFactor: 3,
     fullComboBonus: 1.5,
     requestBonus: 1,
-    // ganho positivo × (1 − reputação / damping)
-    damping: 150,
+    // ganho positivo × (1 − reputação / damping) ^ dampingPower
+    damping: 120,
+    dampingPower: 2,
     min: 0,
     max: 100,
   },
@@ -81,11 +82,11 @@ export const BALANCE = deepFreeze({
 
   // faixas de preço, em R$
   prices: {
-    curious: [25, 40],
-    sectionFan: [35, 60],
-    musician: [40, 70],
-    collector: [80, 200],
-    karaoke: [30, 50],
+    curious: [40, 60],
+    sectionFan: [55, 85],
+    musician: [50, 80],
+    collector: [80, 140],
+    karaoke: [40, 65],
   },
   collectorMasteredFactor: 1.5,
 

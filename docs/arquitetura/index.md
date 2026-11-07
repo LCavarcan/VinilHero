@@ -67,6 +67,8 @@ vinilhero/
 │   │   ├── performance.js       ← partida → P; agrupar partidas da banda
 │   │   ├── customers.js         ← mistura de arquétipos, sorteio dos visitantes
 │   │   ├── simulation.js        ← apresentação → visitantes, compras, faturamento, reputação
+│   │   ├── plays.js             ← partidas → histórico dos discos; resolve a apresentação pendente
+│   │   ├── shelves.js           ← seções, capacidade das prateleiras, depósito
 │   │   ├── requests.js          ← pedidos do dia (gerar e conferir se foram atendidos)
 │   │   ├── economy.js           ← aluguel, melhorias, estoque
 │   │   ├── day.js               ← máquina de estados do dia (abertura → … → acerto)
@@ -76,7 +78,9 @@ vinilhero/
 │   │   ├── fretshiftFiles.js    ← ler biblioteca e scores.json; observar mudanças
 │   │   └── liveServer.js        ← etapa 4: servidor HTTP local para a ponte ao vivo
 │   ├── main/
-│   │   ├── main.js              ← janela, IPC, junta bridge + core + save
+│   │   ├── main.js              ← janela, IPC, observa o Fretshift
+│   │   ├── game.js              ← o jogo em andamento (save + biblioteca + partidas + core); testável sem Electron
+│   │   ├── saveFile.js          ← save.json com escrita atômica; save estragado vira backup
 │   │   ├── store.js             ← JSON com escrita atômica (copiado do Fretshift)
 │   │   └── preload.cjs          ← API exposta à janela
 │   ├── renderer/
@@ -132,12 +136,19 @@ sequenceDiagram
 
 | Canal | Sentido | Conteúdo |
 |---|---|---|
-| `state:get` | janela → main | estado da loja para desenhar (dia, período, dinheiro, discos, melhorias) |
+| `state:get` | janela → main | estado da loja para desenhar (dia, período, dinheiro, prateleiras, melhorias, resultados ainda não vistos) |
+| `state:changed` | main → janela | o estado mudou sozinho (partida chegou, disco novo na biblioteca) |
 | `day:choose` | janela → main | `{ songId, mode: 'play' \| 'passive' \| 'show' }` |
 | `day:cancel` | janela → main | cancela a espera |
-| `day:result` | main → janela | resultado da apresentação (ver [Dados](dados.md#resultado-de-uma-apresentacao)) |
-| `day:close` | janela → main | fecha o dia; devolve o acerto |
-| `shop:buy` | janela → main | `{ upgradeId }` |
+| `day:seen` | janela → main | a janela já mostrou os resultados e avisos pendentes |
+| `day:close` | janela → main | fecha o dia (acerto) |
+| `day:open` | janela → main | abre o dia seguinte |
+| `shop:buy` | janela → main | `{ upgradeId, section? }` (section só na prateleira extra) |
 | `record:move` | janela → main | `{ songId, section }` |
 | `fretshift:status` | main → janela | pasta encontrada?, nº de discos, última leitura, erro |
 | `live:event` | main → janela | eventos da ponte ao vivo (etapa 4) |
+
+As ações devolvem `{ ok: true, state }` ou `{ ok: false, error }`, com `error` sendo um código
+(`shelfFull`, `debt`, `notOnShelf`…) que a janela traduz em `src/renderer/text.js`. Os resultados das
+apresentações chegam dentro do estado (`state.unseen`), inclusive os resolvidos com o VinilHero
+fechado: a janela mostra um de cada vez e avisa com `day:seen`.

@@ -7,31 +7,38 @@
 | Dinheiro | R$ 300 |
 | Reputação | 5 |
 | Melhorias | nenhuma |
-| Prateleiras | 1 por seção (8 discos cada) |
+| Prateleiras | 1 por seção (8 discos cada); o que não couber vai para o depósito ([D-12](../decisoes/index.md#d-12-deposito-para-o-que-nao-cabe-na-prateleira)) |
 | Discos | toda a biblioteca do Fretshift, com seção sugerida |
 
 ## Metas de ritmo (para a calibragem)
 
-Esses são os **alvos** que a calibragem da etapa 2 deve confirmar com o simulador
-(`npm run simular`, ver [Simulação](../arquitetura/simulacao.md#simulador-de-balanceamento)):
+Esses são os **alvos** da calibragem, conferidos com o simulador (`npm run simular -- --metas`, ver
+[Simulação](../arquitetura/simulacao.md#simulador-de-balanceamento)). As metas de lucro valem para o
+mesmo nível (Médio), para isolar o desempenho; o Expert tem metas próprias logo abaixo.
 
-| Jogo | Resultado esperado por dia |
-|---|---|
-| Só pôr os discos pra tocar | empata com o aluguel (sem lucro, sem prejuízo) |
-| Tocar com P ≈ 0,5 | lucro de ~R$ 150 |
-| Tocar com P ≈ 0,8 | lucro de ~R$ 350 |
-| Primeiro palco | no dia 6 a 8 tocando bem |
-| Reputação 50 | depois de ~25 dias tocando bem |
+| Jogo | Resultado esperado por dia | Simulador (etapa 2) |
+|---|---|---|
+| Só pôr os discos pra tocar | empata com o aluguel (sem lucro, sem prejuízo) | +R$ 18 |
+| Tocar com P ≈ 0,5 (Médio) | lucro de ~R$ 150 | R$ 149 |
+| Tocar com P ≈ 0,8 (Médio) | lucro de ~R$ 350 | R$ 395 |
+| Tocar com P ≈ 0,8 em Expert | 1,2× a 1,6× o Médio (clientes melhores) | ×1,44 (R$ 570) |
+| Fácil perfeito × Expert com P 0,7 | mesmo movimento (±10%) | 11 × 11 visitantes |
+| Primeiro palco (guardando dinheiro) | no dia 6 a 8 tocando bem | dia 7,6 |
+| Reputação 50 | depois de ~25 dias tocando bem | dia 22 |
+
+Lucro: média dos 10 primeiros dias, sem comprar melhorias, 100 sementes, biblioteca de 30 discos
+(os resultados quase não mudam com 12 ou 60 discos). O palco só existe na etapa 3; o simulador conta o
+primeiro dia em que a loja teria reputação 25 e R$ 1 500.
 
 ## Preços
 
 | Arquétipo | Faixa | Observação |
 |---|---|---|
-| Curioso | R$ 25–40 | |
-| Fã de seção | R$ 35–60 | |
-| Músico | R$ 40–70 | |
-| Colecionador | R$ 80–200 | ×1,5 em disco dominado |
-| Karaokeiro | R$ 30–50 | |
+| Curioso | R$ 40–60 | |
+| Fã de seção | R$ 55–85 | |
+| Músico | R$ 50–80 | |
+| Colecionador | R$ 80–140 | ×1,5 em disco dominado |
+| Karaokeiro | R$ 40–65 | |
 
 O valor é sorteado de forma uniforme na faixa (com a semente da apresentação, ver
 [Simulação](../arquitetura/simulacao.md)).

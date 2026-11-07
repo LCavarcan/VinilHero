@@ -16,8 +16,11 @@ flowchart LR
     P --> REP[Variação da reputação]
 ```
 
-Todos os números desta página são **valores iniciais**. Eles ficam juntos em um arquivo só
-(`src/core/balance.js`) para serem ajustados na calibragem da [etapa 2](../roteiro/etapa2.md).
+Todos os números desta página ficam juntos em um arquivo só (`src/core/balance.js`). Eles foram
+**calibrados na etapa 2** com o simulador, contra as
+[metas de ritmo](progressao.md#metas-de-ritmo-para-a-calibragem); os valores antes e depois estão em
+[D-13](../decisoes/index.md#d-13-calibragem-da-etapa-2). Os exemplos desta página são testes
+(`test/examples.test.js`): mudar um número no `balance.js` quebra o teste do exemplo correspondente.
 
 ## 1. Desempenho (P)
 
@@ -57,31 +60,33 @@ no Fretshift, prevista na [etapa 4](../roteiro/etapa4.md). Ver [Show da banda](e
 ## 2. Visitantes (movimento)
 
 ```text
-V = arredondar( B · (0,3 + 1,4·P) · D · R · T · S · E )
+V = arredondar( B · (0,6 + 0,9·P) · D · R · T · S · E )
 ```
 
 | Fator | Valores | Observação |
 |---|---|---|
-| `B` base | `6 + reputação / 5` (6 a 26) | a fama da loja |
-| `0,3 + 1,4P` | 0,3 (P = 0) a 1,7 (P = 1) | tocar muito bem dá ~5,7× tocar muito mal |
-| `D` dificuldade | Fácil 0,9 · Médio 1,0 · Difícil 1,1 · Expert 1,2 · "só pôr pra tocar" 1,0 | |
+| `B` base | `6 + reputação / 10` (6 a 16) | a fama da loja |
+| `0,6 + 0,9P` | 0,6 (P = 0) a 1,5 (P = 1) | tocar muito bem traz 2,5× mais gente que tocar muito mal; com a chance de compra, o faturamento fica ~3× maior já na primeira apresentação, e a reputação aumenta a diferença com os dias |
+| `D` dificuldade | Fácil 0,9 · Médio 1,0 · Difícil 1,05 · Expert 1,1 · "só pôr pra tocar" 0,72 | o fator do "só pôr pra tocar" acerta o empate com o aluguel |
 | `R` repetição no dia | 1ª 1,0 · 2ª 0,6 · 3ª em diante 0,35 | |
 | `T` período | manhã 0,7 · tarde 1,0 · noite 1,3 | |
 | `S` caixa de som | nível 0 a 3: 1,0 · 1,15 · 1,3 · 1,5 | melhoria |
 | `E` evento | 1,0 normalmente | ver [Eventos](eventos.md) |
 
-### Exemplos (reputação 20, à tarde, sem melhorias: `B = 10`)
+### Exemplos (reputação 20, à tarde, sem melhorias: `B = 8`)
 
 | Partida | Conta | Visitantes |
 |---|---|---|
-| Expert, P = 0,71 | 10 · 1,29 · 1,2 | **16** |
-| Fácil perfeita, P = 1 | 10 · 1,70 · 0,9 | **15** |
-| Médio, P = 0,35 | 10 · 0,79 · 1,0 | **8** |
-| Só pôr pra tocar | 10 · 0,65 · 1,0 | **7** |
-| Difícil, P = 0,08 | 10 · 0,41 · 1,1 | **5** |
+| Expert, P = 0,71 | 8 · 1,24 · 1,1 | **11** |
+| Fácil perfeita, P = 1 | 8 · 1,50 · 0,9 | **11** |
+| Médio, P = 0,35 | 8 · 0,91 · 1,0 | **7** |
+| Só pôr pra tocar | 8 · 0,825 · 0,72 | **5** |
+| Difícil, P = 0,08 | 8 · 0,67 · 1,05 | **6** |
+
+Tocar muito mal atrai um pouco mais de gente que só pôr pra tocar, mas custa reputação (seção 5).
 
 !!! note "Equilíbrio entre dificuldades"
-    Expert com ~70% de desempenho rende o mesmo movimento que Fácil perfeita. Quem joga em Fácil não é
+    Expert com ~70% de desempenho rende o mesmo movimento que Fácil perfeita (±10%, conferido nos testes). Quem joga em Fácil não é
     punido. Quem joga em Expert ganha **clientes melhores** (abaixo), não só mais clientes.
 
 ## 3. Quem entra (mistura de clientes)
@@ -104,15 +109,15 @@ Cada visitante recebe um arquétipo, sorteado com pesos:
 Cada visitante compra **no máximo um disco** com chance:
 
 ```text
-chance = base · afinidade · (0,5 + 0,5·P) · vitrine
+chance = base · afinidade · (0,75 + 0,25·P) · vitrine
 ```
 
 | Arquétipo | Base | Afinidade 1,4 se… | Afinidade 0,6 se… |
 |---|---|---|---|
 | Curioso | 0,25 | — | — |
 | Fã de seção | 0,45 | o disco é da seção dele | é de outra seção |
-| Músico | 0,55 | tocou o instrumento dele | outro instrumento; **0 se P < 0,7** |
-| Colecionador | 0,60 | Difícil/Expert ou disco dominado | Fácil |
+| Músico | 0,40 | tocou o instrumento dele | outro instrumento; **0 se P < 0,7** |
+| Colecionador | 0,35 | Difícil/Expert ou disco dominado | Fácil |
 | Karaokeiro | 0,50 | partida de voz | disco sem letra |
 | Crítico | 0 | — | — |
 
@@ -126,23 +131,25 @@ chance = base · afinidade · (0,5 + 0,5·P) · vitrine
 Por apresentação:
 
 ```text
-Δ = (P − 0,45) · 6      × 3 se houver crítico
+Δ = (P − 0,35) · 2,7    × 3 se houver crítico
     + 1,5               se full combo
     + 1                 por pedido atendido
 ```
 
-- Quando o total é positivo, ele é reduzido perto do topo: `Δ × (1 − reputação / 150)`.
+- Quando o total é positivo, ele é reduzido perto do topo: `Δ × (1 − reputação / 120)²`. Com essa
+  curva, tocar bem leva a reputação a 25 em ~1 semana, a 50 em ~3 semanas e a 75 em ~7 semanas.
+- Tocar razoável (P ≥ 0,35) já não perde reputação; tocar mal perde.
 - **"Só pôr pra tocar" não muda a reputação** (Δ = 0): não jogar não é punido, só não avança.
 - A reputação fica entre 0 e 100.
 
-Exemplos com reputação 20 (redução de ×0,87 nos ganhos):
+Exemplos com reputação 20 (redução de ×0,69 nos ganhos):
 
 | Partida | Δ |
 |---|---|
-| P = 0,71 | +1,4 |
-| P = 1, full combo | +4,2 |
-| P = 0,35 | −0,6 |
-| P = 0,08, com crítico | −6,7 |
+| P = 0,71 | +0,7 |
+| P = 1, full combo | +2,3 |
+| P = 0,35 | 0,0 |
+| P = 0,08, com crítico | −2,2 |
 
 ## 6. Bônus da ponte ao vivo (etapa 4)
 

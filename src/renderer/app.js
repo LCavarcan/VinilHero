@@ -1,115 +1,171 @@
-// Etapa 1: tela "Acervo" (a biblioteca do Fretshift como discos) e a faixa "Última partida".
-// A janela só mostra o que o processo principal manda.
+// Troca de telas. A janela só mostra o que o processo principal manda; cada ação volta com o estado
+// novo da loja.
 
+import { $, el, toast } from './dom.js';
+import * as acerto from './screens/acerto.js';
+import * as aguardando from './screens/aguardando.js';
+import * as escolha from './screens/escolha.js';
+import * as melhorias from './screens/melhorias.js';
+import * as resultado from './screens/resultado.js';
 import {
-  DIFFICULTY_NAMES,
-  INSTRUMENT_NAMES,
-  SECTION_NAMES,
-  TAG_NAMES,
-  formatP,
-  formatPercent,
+  ERRORS,
+  PERIOD_NAMES,
+  TITLE_NAMES,
+  formatMoney,
+  formatReputation,
+  noticeText,
   plural,
-  stars,
 } from './text.js';
 
-const $ = (id) => document.getElementById(id);
+let state = null;
+let status = null;
+// telas que a jogadora abriu por cima do fluxo do dia
+let overlay = null; // 'upgrades' | null
+// resultados esperando para serem mostrados, um de cada vez
+const results = [];
+let showingResult = null;
+let current = null; // { screen, cleanup }
+// durante a animação do resultado, o topo mostra a loja de antes (sem estragar a surpresa)
+let hudOverride = null;
 
-function el(tag, className, text) {
-  const node = document.createElement(tag);
-  if (className) node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
+const ui = {
+  /** Chama uma ação do processo principal e atualiza a tela. */
+  async act(call) {
+    const res = await call;
+    if (!res.ok) {
+      toast(ERRORS[res.error] ?? res.message ?? ERRORS.unexpected, 'error');
+      return false;
+    }
+    setState(res.state);
+    return true;
+  },
+  openUpgrades() {
+    overlay = 'upgrades';
+    route();
+  },
+  closeOverlay() {
+    overlay = null;
+    route();
+  },
+  /** A animação do resultado acabou: o topo mostra a loja de agora. */
+  resultFinished() {
+    hudOverride = null;
+    renderHud();
+  },
+  /** O resultado na tela terminou: mostra o próximo, ou volta ao dia. */
+  nextResult() {
+    showingResult = null;
+    hudOverride = null;
+    route();
+  },
+};
+
+function setState(next) {
+  state = next;
+  if (!state) return route();
+  for (const n of state.notices) toast(noticeText(n), n.code === 'saveBroken' ? 'error' : 'info', 9000);
+  if (state.unseen.length) {
+    results.push(...state.unseen);
+    // avisa o processo principal: os resultados já estão com a janela
+    window.api.day.seen();
+    state = { ...state, unseen: [], notices: [] };
+  }
+  renderHud();
+  route();
 }
 
-function show(screen) {
-  $('screen-not-found').classList.toggle('hidden', screen !== 'not-found');
-  $('screen-collection').classList.toggle('hidden', screen !== 'collection');
+function renderHud() {
+  const hud = $('hud');
+  hud.replaceChildren();
+  $('hud').classList.toggle('hidden', !state);
+  $('nav').classList.toggle('hidden', !state);
+  if (!state) return;
+  const { day } = state;
+  const shop = hudOverride ?? state.shop;
+  const period = hudOverride?.period ?? day.period;
+  hud.append(
+    el('span', 'hud-day', `Dia ${day.number}`, el('small', null, PERIOD_NAMES[period])),
+    el('span', `hud-money${shop.money < 0 ? ' negative' : ''}`, formatMoney(shop.money)),
+    el('span', 'hud-rep', `★ ${formatReputation(shop.reputation)}`, el('small', null, TITLE_NAMES[shop.title])),
+  );
+  $('nav-upgrades').classList.toggle('active', overlay === 'upgrades');
+  $('nav-shop').classList.toggle('active', overlay !== 'upgrades');
 }
 
-function renderStatus(status) {
+function renderStatus() {
   const box = $('status');
   box.replaceChildren();
-  box.classList.toggle('bad', !status.found || !!status.error);
-  if (!status.found) {
+  box.classList.toggle('bad', !status?.found || !!status?.error);
+  if (!status?.found) {
     box.textContent = 'Fretshift não encontrado';
     return;
   }
   box.append(el('span', 'dot'), el('span', null, `Fretshift · ${plural(status.records, 'disco', 'discos')}`));
-  box.title = status.dir;
-  if (status.error) box.append(el('span', 'error', ` · ${status.error}`));
+  box.title = status.error ? `${status.dir}\n${status.error}` : status.dir;
 }
 
-function renderRecords(records) {
-  $('collection-count').textContent = records.length ? plural(records.length, 'disco', 'discos') : '';
-  $('collection-empty').classList.toggle('hidden', records.length > 0);
-  $('records').replaceChildren(...records.map(recordCard));
+/** Qual tela mostrar agora. */
+function pick() {
+  if (!state) return null;
+  if (showingResult || results.length) return 'result';
+  if (overlay === 'upgrades') return 'upgrades';
+  if (state.pending?.mode === 'play') return 'waiting';
+  if (['morning', 'afternoon', 'night'].includes(state.day.period)) return 'choose';
+  return 'close';
 }
 
-function recordCard(record) {
-  const li = el('li', 'record');
-  li.dataset.id = record.id;
+const SCREENS = { choose: escolha, waiting: aguardando, result: resultado, close: acerto, upgrades: melhorias };
 
-  const cover = el('div', 'cover');
-  const img = el('img');
-  img.alt = '';
-  img.loading = 'lazy';
-  img.addEventListener('error', () => cover.classList.add('no-cover'));
-  img.src = `vinilhero://cover/${record.id}`;
-  cover.append(img, el('span', 'cover-fallback', record.title.slice(0, 1).toUpperCase()));
-
-  const info = el('div', 'info');
-  info.append(el('div', 'title', record.title), el('div', 'artist', record.artist || 'Artista desconhecido'));
-
-  const tags = el('div', 'tags');
-  for (const tag of record.tags) tags.append(el('span', 'tag', TAG_NAMES[tag] ?? tag));
-
-  const section = el('div', 'section', SECTION_NAMES[record.suggestedSection] ?? record.suggestedSection);
-  section.title = 'Seção sugerida';
-
-  li.append(cover, info, tags, section);
-  return li;
-}
-
-function renderLastPlay(play, { fresh = false } = {}) {
-  const box = $('last-play');
-  box.replaceChildren();
-  box.classList.toggle('hidden', !play);
-  if (!play) return;
-  box.append(
-    el('span', 'label', fresh ? 'Partida nova' : 'Última partida'),
-    el('strong', null, play.title ?? 'Música fora da biblioteca'),
-    el('span', null, INSTRUMENT_NAMES[play.instrument] ?? play.instrument),
-    el('span', null, DIFFICULTY_NAMES[play.difficulty] ?? play.difficulty),
-    el('span', 'stars', stars(play.stars)),
-    el('span', null, formatPercent(play.accuracy)),
-    el('span', 'p', formatP(play.P)),
-  );
-  if (play.fullCombo) box.append(el('span', 'fc', 'full combo'));
-  if (fresh) {
-    box.classList.remove('flash');
-    void box.offsetWidth; // reinicia a animação
-    box.classList.add('flash');
+function route() {
+  $('screen-not-found').classList.toggle('hidden', !!state || !status || status.found);
+  const name = pick();
+  renderHud();
+  if (!name) {
+    current?.cleanup?.();
+    current = null;
+    $('screen').replaceChildren();
+    if (status?.found && status.error) $('screen').append(el('p', 'screen error', status.error));
+    return;
   }
+  if (name === 'result') {
+    if (!showingResult) {
+      showingResult = results.shift();
+      hudOverride = {
+        period: showingResult.period,
+        money: showingResult.shop.money - showingResult.revenue,
+        reputation: showingResult.shop.reputation - showingResult.reputationDelta,
+        title: showingResult.titleBefore,
+      };
+      renderHud();
+      current?.cleanup?.();
+      current = { name, cleanup: resultado.render($('screen'), showingResult, state, ui) };
+    }
+    return;
+  }
+  // as outras telas são redesenhadas a cada mudança de estado
+  current?.cleanup?.();
+  current = { name, cleanup: SCREENS[name].render($('screen'), state, ui) };
 }
 
 async function refresh() {
-  const status = await window.api.fretshift.status();
-  renderStatus(status);
-  if (!status.found) return show('not-found');
-  show('collection');
-  renderRecords(await window.api.records.list());
-  renderLastPlay(await window.api.plays.last());
+  status = await window.api.fretshift.status();
+  renderStatus();
+  setState(await window.api.state.get());
 }
 
 $('pick-dir').addEventListener('click', async () => {
   $('pick-error').textContent = '';
-  const result = await window.api.fretshift.pickDir();
-  if (result.ok) await refresh();
-  else if (result.error) $('pick-error').textContent = result.error;
+  const res = await window.api.fretshift.pickDir();
+  if (res.ok) await refresh();
+  else if (res.error) $('pick-error').textContent = res.error;
 });
+$('nav-upgrades').addEventListener('click', () => ui.openUpgrades());
+$('nav-shop').addEventListener('click', () => ui.closeOverlay());
 
-window.api.fretshift.onStatus(renderStatus);
-window.api.records.onChanged(renderRecords);
-window.api.plays.onNew(({ play }) => renderLastPlay(play, { fresh: true }));
+window.api.fretshift.onStatus((s) => {
+  status = s;
+  renderStatus();
+});
+window.api.state.onChange((s) => setState(s));
 
 refresh();

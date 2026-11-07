@@ -79,15 +79,14 @@ mistura de arquétipos diz *quem* entra.
 
 | Arquétipo | Peso na mistura | Gosta de | Gasta | Observação |
 |---|---|---|---|---|
-| Curioso | alto | qualquer coisa | R$ 25–40 | maioria das visitas; compra pouco |
-| Fã de seção | médio | uma seção específica | R$ 35–60 | converte muito se o disco for da seção dele |
-| Músico | baixo | um instrumento; alta precisão | R$ 40–70 | só compra se P ≥ 0,7 no instrumento dele |
-| Colecionador | raro | Difícil/Expert, discos dominados | R$ 80–200 | aparece mais em Expert; fiel |
-| Karaokeiro | baixo | etiqueta `cantavel`, partida de voz | R$ 30–50 | à noite, mais frequente |
+| Curioso | alto | qualquer coisa | R$ 40–60 | maioria das visitas; compra pouco |
+| Fã de seção | médio | uma seção específica | R$ 55–85 | converte muito se o disco for da seção dele |
+| Músico | baixo | um instrumento; alta precisão | R$ 50–80 | só compra se P ≥ 0,7 no instrumento dele |
+| Colecionador | raro | Difícil/Expert, discos dominados | R$ 80–140 | aparece mais em Expert; fiel |
+| Karaokeiro | baixo | etiqueta `cantavel`, partida de voz | R$ 40–65 | à noite, mais frequente |
 | Crítico | muito raro | — | não compra | multiplica a variação de reputação por 3 |
 
-Os números de mistura e preço ficam em [Progressão e economia](progressao.md) e são calibrados na
-etapa 2.
+Os números de mistura e preço ficam em [Progressão e economia](progressao.md) (calibrados na etapa 2).
 
 ### Pedidos do dia
 

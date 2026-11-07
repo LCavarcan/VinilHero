@@ -4,13 +4,22 @@ Simulador de **loja de discos** que se move com a sua performance no [Fretshift]
 Cada música da sua biblioteca do Fretshift vira um disco na prateleira; tocar bem esse disco no
 Fretshift enche a loja de clientes, vende mais e aumenta a fama da loja.
 
-> **Situação:** etapa 1 feita (o app abre, lê a biblioteca e as partidas do Fretshift). Roteiro em
+> **Situação:** etapa 2 feita: a loja é jogável (dias, clientes, acerto, melhorias). Roteiro em
 > [`docs/roteiro`](docs/roteiro/index.md).
 
 ## A ideia em uma frase
 
 O Fretshift é onde você **produz** (toca); o VinilHero é onde você **administra e progride** (vende,
 melhora a loja, atende clientes, disputa com as lojas dos amigos).
+
+## Como rodar
+
+```bash
+npm install
+npm start                      # abre o VinilHero (precisa do Fretshift instalado ou da pasta dele)
+npm test                       # lint + testes
+npm run simular -- --metas     # simulador de balanceamento: confere as metas de ritmo
+```
 
 ## Documentação
 

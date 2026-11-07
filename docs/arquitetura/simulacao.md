@@ -105,21 +105,32 @@ Os exemplos numéricos de [Performance e movimento](../design/performance.md) vi
 
 ## Simulador de balanceamento
 
-`npm run simular` (`src/cli/simular.js`) joga muitos dias com jogadores fictícios e imprime a
-evolução da loja, para conferir as [metas de ritmo](../design/progressao.md#metas-de-ritmo-para-a-calibragem).
+`npm run simular` (`src/cli/simular.js`) joga muitos dias com jogadoras fictícias, usando as mesmas
+funções do `core/` que o jogo usa, e imprime a evolução da loja.
 
 ```text
-npm run simular -- --dias 40 --perfil bom --biblioteca 30 --sementes 200
-
-perfil "bom" (P ~ N(0,75; 0,1), Expert, 3 apresentações/dia, compra a melhoria mais barata)
-dia   saldo   reputação  título             melhorias
-  1     612        8.9   Lojinha de bairro  —
-  5    1480       19.7   Conhecida…         som 1, vitrine 1
-  8    1190       27.0   Ponto de encontro  + palco
- ...
-média de 200 sementes · palco no dia 7,4 (alvo 6–8) ✓ · reputação 50 no dia 26 (alvo ~25) ✓
+npm run simular -- --metas                      confere todas as metas de ritmo
+npm run simular -- --perfil bom --dias 25       um perfil, dia a dia (média das sementes)
+opções: --sementes 100  --biblioteca 30  --sem-compras  --perfil todos
 ```
 
-Perfis: `passivo` (só põe pra tocar), `fraco` (P ≈ 0,3), `medio` (P ≈ 0,5), `bom` (P ≈ 0,75),
-`perfeito_facil` (P = 1, Fácil). Os números de saída acima são ilustrativos: os reais saem da
-calibragem.
+Saída real depois da calibragem (`--perfil bom --dias 25`, compra a melhoria mais barata guardando
+2 dias de aluguel):
+
+```text
+perfil "bom" (P ~ N(0,8; 0,08), Médio), 100 sementes, biblioteca de 30
+dia   faturamento   lucro    saldo   reputação  melhorias (semente 0)
+  1       R$ 408    R$ 288   R$ 448        8.3  som 0, vitrine 0
+  2       R$ 452    R$ 327   R$ 513       11.4  som 1, vitrine 0
+  5       R$ 664    R$ 513   R$ 839       19.9  som 1, vitrine 1
+ 10       R$ 894    R$ 716  R$ 1523       31.4  som 2, vitrine 2
+ 15      R$ 1174    R$ 979  R$ 3632       40.5  som 3, vitrine 2
+ 25      R$ 1397   R$ 1202  R$ 14495       54.2  som 3, vitrine 2
+```
+
+Perfis: `passivo` (só põe pra tocar), `fraco` (P ≈ 0,3, Médio), `medio` (P ≈ 0,5, Médio), `bom`
+(P ≈ 0,8, Médio), `expert` (P ≈ 0,8, Expert), `expert70` (P = 0,7, Expert), `perfeito_facil` (P = 1,
+Fácil). As partidas fictícias têm estrelas inteiras, como no Fretshift.
+
+Na etapa 2 todo o dinheiro do perfil "bom" sobra depois do dia 15: o catálogo de melhorias ainda é
+pequeno. A etapa 3 (estoque, neon, palco, cabine, cafeteria) precisa rodar o simulador de novo.
