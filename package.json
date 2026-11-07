@@ -1,0 +1,27 @@
+{
+  "name": "vinilhero",
+  "productName": "VinilHero",
+  "version": "0.0.1",
+  "description": "Simulador de loja de discos que se move com a sua performance no Fretshift",
+  "type": "module",
+  "main": "src/main/main.js",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "eslint . && node --test",
+    "lint": "eslint ."
+  },
+  "author": "LCavarcan",
+  "license": "MIT",
+  "allowScripts": {
+    "electron@44.7.2": true
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "electron": "44.7.2",
+    "eslint": "^10.14.0",
+    "globals": "^17.14.0"
+  }
+}

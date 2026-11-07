@@ -45,11 +45,11 @@ cafeteria).
 | Rock e Metal | gênero com "rock", "metal", "punk"; ou bateria com nota ≥ 5 |
 | Pop | gênero com "pop" |
 | Brasil | gênero com "mpb", "samba", "forró", "sertanejo", "bossa", "baião" |
-| Eletrônica | gênero com "electr", "house", "techno", "edm" |
+| Eletrônica | gênero com "electr", "eletr", "house", "techno", "edm" |
 | Soul e Funk | gênero com "soul", "funk", "r&b", "disco" |
 | Variados | todo o resto (padrão) |
 
-O `meta.genre` do Fretshift costuma vir vazio, por isso a sugestão é só um ponto de partida e o jogador
+A comparação ignora acentos e maiúsculas ("Forró" = "forro") e segue a ordem da tabela ("Pop Punk" vai para Rock e Metal). O `meta.genre` do Fretshift costuma vir vazio, por isso a sugestão é só um ponto de partida e o jogador
 **move o disco** de seção quando quiser. As seções começam com 1 prateleira cada (8 discos) e crescem
 com melhorias.
 

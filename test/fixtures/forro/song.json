@@ -1,0 +1,167 @@
+{
+ "format": "fretshift-song",
+ "version": 4,
+ "id": "c3c3c3c3c3c3c3c3",
+ "audioHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+ "audioExt": ".mp3",
+ "meta": {
+  "title": "Asa Branca",
+  "artist": "Luiz Gonzaga",
+  "album": "",
+  "genre": "Forró",
+  "year": "",
+  "charter": "Fretshift"
+ },
+ "durationMs": 173759,
+ "previewStartMs": 30000,
+ "bpm": 121.8,
+ "ratings": {
+  "guitar": 3,
+  "drums": 3,
+  "vocals": 2
+ },
+ "instruments": {
+  "guitar": {
+   "Expert": {
+    "notes": [
+     {
+      "t": 0,
+      "frets": [
+       0
+      ]
+     },
+     {
+      "t": 10,
+      "frets": [
+       1
+      ]
+     },
+     {
+      "t": 20,
+      "frets": [
+       2
+      ]
+     },
+     {
+      "t": 30,
+      "frets": [
+       3
+      ]
+     },
+     {
+      "t": 40,
+      "frets": [
+       4
+      ]
+     },
+     {
+      "t": 50,
+      "frets": [
+       0
+      ]
+     },
+     {
+      "t": 60,
+      "frets": [
+       1
+      ]
+     },
+     {
+      "t": 70,
+      "frets": [
+       2
+      ]
+     },
+     {
+      "t": 80,
+      "frets": [
+       3
+      ]
+     },
+     {
+      "t": 90,
+      "frets": [
+       4
+      ]
+     }
+    ]
+   }
+  },
+  "drums": {
+   "Expert": {
+    "notes": [
+     {
+      "t": 0,
+      "frets": [
+       0
+      ]
+     },
+     {
+      "t": 10,
+      "frets": [
+       1
+      ]
+     },
+     {
+      "t": 20,
+      "frets": [
+       2
+      ]
+     },
+     {
+      "t": 30,
+      "frets": [
+       3
+      ]
+     },
+     {
+      "t": 40,
+      "frets": [
+       4
+      ]
+     },
+     {
+      "t": 50,
+      "frets": [
+       0
+      ]
+     },
+     {
+      "t": 60,
+      "frets": [
+       1
+      ]
+     },
+     {
+      "t": 70,
+      "frets": [
+       2
+      ]
+     },
+     {
+      "t": 80,
+      "frets": [
+       3
+      ]
+     },
+     {
+      "t": 90,
+      "frets": [
+       4
+      ]
+     }
+    ]
+   }
+  },
+  "vocals": {
+   "notes": [
+    {
+     "t": 5,
+     "len": 1,
+     "midi": 57
+    }
+   ],
+   "phrases": []
+  }
+ }
+}

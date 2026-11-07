@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' vinilhero:; style-src 'self'; script-src 'self'"
+    />
+    <title>VinilHero</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand"><span class="disc" aria-hidden="true"></span>VinilHero</div>
+      <div id="status" class="status" role="status"></div>
+    </header>
+
+    <main>
+      <section id="screen-not-found" class="screen empty hidden">
+        <span class="disc big" aria-hidden="true"></span>
+        <h1>Fretshift não encontrado</h1>
+        <p>
+          O VinilHero lê a biblioteca e as partidas do Fretshift. Ele procurou em
+          <code>%APPDATA%\Fretshift</code> e não achou.
+        </p>
+        <p class="muted">Abra o Fretshift uma vez ou escolha a pasta de dados dele.</p>
+        <button id="pick-dir" class="primary" type="button">Escolher a pasta do Fretshift</button>
+        <p id="pick-error" class="error" role="alert"></p>
+      </section>
+
+      <section id="screen-collection" class="screen hidden">
+        <div id="last-play" class="last-play" aria-live="polite"></div>
+        <div class="heading">
+          <h1>Acervo</h1>
+          <span id="collection-count" class="muted"></span>
+        </div>
+        <p id="collection-empty" class="muted hidden">
+          A biblioteca do Fretshift está vazia. Gere uma música no Fretshift e ela aparece aqui.
+        </p>
+        <ul id="records" class="records"></ul>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

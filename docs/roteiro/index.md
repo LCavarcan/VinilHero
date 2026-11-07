@@ -5,7 +5,7 @@ Cinco etapas. Cada uma termina com algo **jogável ou verificável** e com os te
 
 | Etapa | Resultado | Muda o Fretshift? | Situação |
 |---|---|---|---|
-| [1. Fundação e leitura do Fretshift](etapa1.md) | o VinilHero abre, mostra a biblioteca como discos e vê partidas novas chegarem | não | a fazer |
+| [1. Fundação e leitura do Fretshift](etapa1.md) | o VinilHero abre, mostra a biblioteca como discos e vê partidas novas chegarem | não | feita; falta conferir com a biblioteca real |
 | [2. Loja jogável (MVP)](etapa2.md) | um dia completo: escolher disco, tocar, ver clientes, fechar o dia, comprar melhoria | não | a fazer |
 | [3. Clientes, estoque e eventos](etapa3.md) | pedidos, estoque, eventos, todas as melhorias, títulos, instalador | não | a fazer |
 | [4. Loja ao vivo](etapa4.md) | loja reage durante a música, show da banda, "Tocar no Fretshift" | **sim** (opcional) | a fazer |

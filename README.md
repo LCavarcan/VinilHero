@@ -4,7 +4,7 @@ Simulador de **loja de discos** que se move com a sua performance no [Fretshift]
 Cada música da sua biblioteca do Fretshift vira um disco na prateleira; tocar bem esse disco no
 Fretshift enche a loja de clientes, vende mais e aumenta a fama da loja.
 
-> **Situação:** documentação e arquitetura. Ainda não há código: o roteiro de implementação está em
+> **Situação:** etapa 1 feita (o app abre, lê a biblioteca e as partidas do Fretshift). Roteiro em
 > [`docs/roteiro`](docs/roteiro/index.md).
 
 ## A ideia em uma frase
