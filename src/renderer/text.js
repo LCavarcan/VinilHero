@@ -90,6 +90,7 @@ export const EVENTS = {
     effect: 'À noite só partidas de voz contam (as outras valem como só pôr pra tocar). Três vezes mais karaokeiros, +20% de movimento.',
   },
   demanding: { name: 'Cliente exigente', effect: 'Um cliente deixou um pedido difícil no quadro. Ele espera 3 dias.' },
+  bia: { name: 'Festa da Bia', effect: 'A Bia traz a turma dela à noite: discos rápidos atraem 40% mais gente.' },
 };
 
 const INSTRUMENT_WELL_PLAYED = {
@@ -307,5 +308,60 @@ export function noticeText(n) {
       return `O save não abriu (${n.error}) e foi guardado como ${n.file}. A loja recomeçou do zero.`;
     default:
       return '';
+  }
+}
+
+/**
+ * O que o pedido de um cliente fixo precisa, em poucas palavras ("bateria · disco pesado · 4
+ * estrelas"). `songTitle`: o disco do pedido, quando ele pede um específico.
+ */
+export function condText(cond, songTitle) {
+  const parts = [];
+  if (cond.show) parts.push('show da banda');
+  if (cond.songId) parts.push(`“${songTitle ?? 'aquele disco'}”`);
+  if (cond.section) parts.push(`disco de ${SECTION_NAMES[cond.section]}`);
+  if (cond.tag) parts.push(`disco ${TAG_NAMES[cond.tag] ?? cond.tag}`);
+  if (cond.mastered) parts.push('disco dominado');
+  if (cond.instrument) {
+    const list = Array.isArray(cond.instrument) ? cond.instrument : [cond.instrument];
+    parts.push(list.map((i) => INSTRUMENT_NAMES[i]?.toLowerCase() ?? i).join(' ou '));
+  }
+  if (cond.difficulties) parts.push(`em ${cond.difficulties.map((d) => DIFFICULTY_NAMES[d]).join(' ou ')}`);
+  if (cond.minStars !== undefined) parts.push(plural(cond.minStars, 'estrela', 'estrelas'));
+  if (cond.minP !== undefined) parts.push(`desempenho ${decimal.format(cond.minP)}`);
+  if (cond.minCombo !== undefined) parts.push(`combo de ${formatPercent(cond.minCombo)} das notas`);
+  if (cond.fullCombo) parts.push('full combo');
+  return parts.length ? parts.join(' · ') : 'qualquer disco, tocando';
+}
+
+/** Por que o pedido do cliente fixo não foi atendido (uma linha). */
+export function regularMissText(cond, miss) {
+  switch (miss?.why) {
+    case 'notPlayed':
+      return 'só vale tocando no Fretshift';
+    case 'show':
+      return 'precisava ser um show da banda';
+    case 'otherRecord':
+      return 'era outro disco';
+    case 'section':
+      return `precisava ser da seção ${SECTION_NAMES[cond.section]}`;
+    case 'tag':
+      return `precisava ser um disco ${TAG_NAMES[cond.tag] ?? cond.tag}`;
+    case 'mastered':
+      return 'precisava ser um disco dominado';
+    case 'instrument':
+      return `precisava tocar ${condText({ instrument: cond.instrument })}`;
+    case 'difficulty':
+      return `precisava ser em ${cond.difficulties.map((d) => DIFFICULTY_NAMES[d]).join(' ou ')}`;
+    case 'lowP':
+      return `desempenho ${decimal.format(miss.P)}, precisava de ${decimal.format(cond.minP)}`;
+    case 'stars':
+      return `${plural(miss.stars, 'estrela', 'estrelas')}, precisava de ${cond.minStars}`;
+    case 'combo':
+      return `maior combo com ${formatPercent(miss.combo)} das notas, precisava de ${formatPercent(cond.minCombo)}`;
+    case 'fullCombo':
+      return 'precisava de full combo';
+    default:
+      return 'não foi dessa vez';
   }
 }

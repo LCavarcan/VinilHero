@@ -11,6 +11,7 @@ import { closeDay, choose, openDay, prepareDay, titleOf } from '../core/day.js';
 import { buy, rent, upgradeOptions } from '../core/economy.js';
 import { processPlays, resolvePassive } from '../core/plays.js';
 import { DIFFICULTIES, SECTIONS } from '../core/records.js';
+import { REGULAR_IDS, recordFits } from '../core/regulars.js';
 import { isOpenRequest, recordMatches } from '../core/requests.js';
 import { mulberry32, seedFrom } from '../core/rng.js';
 import { newSave } from '../core/saveFormat.js';
@@ -105,14 +106,23 @@ function buyCheapest(state) {
 }
 
 /**
- * Escolhe o disco do período: quem toca tenta atender um pedido aberto (o disco que serve e ainda não
- * tocou hoje, com o instrumento pedido); senão, o próximo da prateleira. Na Noite de karaokê, canta
- * se o disco tiver voz. Devolve `{ song, instrument }`.
+ * Escolhe o disco do período: quem toca tenta primeiro agradar o cliente fixo do período, depois
+ * atender um pedido aberto (o disco que serve e ainda não tocou hoje, com o instrumento pedido);
+ * senão, o próximo da prateleira. Na Noite de karaokê, canta se o disco tiver voz. Devolve
+ * `{ song, instrument }`.
  */
 function pickSong(state, shelf, next, { passive }) {
   const period = state.day.period;
   const fresh = (r) => !state.day.playedToday[r.id];
   if (!passive) {
+    // show da banda a jogadora fictícia não faz
+    const visit = (state.day.regulars ?? []).find((v) => v.period === period && !v.done && !v.cond.show);
+    const song = visit && (shelf.find((r) => fresh(r) && recordFits(visit.cond, r)) ?? shelf.find((r) => recordFits(visit.cond, r)));
+    if (song) {
+      const wanted = visit.cond.instrument;
+      const options = (Array.isArray(wanted) ? wanted : wanted ? [wanted] : []).filter((i) => song.instruments.includes(i));
+      return { song, instrument: options[0] };
+    }
     const open = state.day.requests.filter((r) => isOpenRequest(r, state.day.number) && (!r.period || r.period === period));
     for (const request of open) {
       // o cliente exigente pede full combo: a jogadora fictícia não tenta
@@ -187,6 +197,9 @@ export function simulate({ profile, days, librarySize, seed, purchases = true, a
       upgrades: { ...state.upgrades },
       // o palco custa R$ 1 500 e pede reputação 25
       couldBuyStage: state.shop.reputation >= 25 && state.shop.money >= 1500,
+      // nível de amizade de cada cliente fixo no fim do dia
+      regulars: Object.fromEntries(REGULAR_IDS.map((id) => [id, state.regulars?.[id]?.level ?? 0])),
+      visits: Object.fromEntries(REGULAR_IDS.map((id) => [id, state.regulars?.[id]?.visits ?? 0])),
     });
   }
   return log;
@@ -223,6 +236,10 @@ export function summarize({ profile, days, librarySize, seeds, purchases, autoRe
     stageDay: dayOf((x) => x.couldBuyStage),
     rep25: dayOf((x) => x.reputation >= 25),
     rep50: dayOf((x) => x.reputation >= 50),
+    // em que dia cada cliente fixo vira "da casa" (nível 5)
+    regulars: Object.fromEntries(REGULAR_IDS.map((id) => [id, dayOf((x) => x.regulars[id] >= 5)])),
+    regularLevels: Object.fromEntries(REGULAR_IDS.map((id) => [id, mean(runs.map((r) => r.at(-1).regulars[id]))])),
+    regularVisits: Object.fromEntries(REGULAR_IDS.map((id) => [id, mean(runs.map((r) => r.at(-1).visits[id]))])),
   };
 }
 
@@ -246,6 +263,10 @@ function printRun(name, opts) {
   console.log(`eventos diferentes na 1ª semana: ${s.events7.toFixed(1)}`);
   console.log(`lucro médio nos 10 primeiros dias: ${brl(s.profit10)}`);
   console.log(`palco possível: ${fmtDay(s.stageDay)} · reputação 25: ${fmtDay(s.rep25)} · reputação 50: ${fmtDay(s.rep50)}`);
+  console.log(`clientes fixos "da casa" (nível 5), com o nível médio e as visitas até o dia ${opts.days}:`);
+  for (const id of REGULAR_IDS) {
+    console.log(`  ${id.padEnd(7)} ${fmtDay(s.regulars[id]).padEnd(24)} nível ${s.regularLevels[id].toFixed(1)} · ${s.regularVisits[id].toFixed(1)} visitas`);
+  }
   return s;
 }
 

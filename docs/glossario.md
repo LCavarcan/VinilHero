@@ -33,6 +33,10 @@ Disco dominado
 :   Disco com 5 estrelas em Difícil ou Expert em algum instrumento. Ganha capa dourada e vende um
     pouco sozinho em todo período.
 
+Cliente fixo
+:   Personagem com nome e história que visita a loja de tempos em tempos, lembra das apresentações e
+    tem amizade de 0 a 5. Ver [Clientes fixos](design/clientes-fixos.md).
+
 Acerto do dia
 :   Fechamento do dia: vendas, aluguel, saldo, variação da reputação.
 

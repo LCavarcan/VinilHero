@@ -143,6 +143,34 @@ export const BALANCE = deepFreeze({
     soloSaleMaxPerPeriod: 4,
   },
 
+  // ---------- Clientes fixos (docs/design/clientes-fixos.md) ----------
+  regulars: {
+    maxLevel: 5,
+    // visitas agradadas em cada nível antes do pedido do capítulo
+    pleasedPerLevel: 1,
+    // dias até a próxima visita (sorteado na faixa); "da casa" (nível 5) vem com menos frequência
+    revisit: [2, 3],
+    revisitHome: [4, 6],
+    // quantos por dia: 1 até a reputação 10, depois 2
+    perDay: 1,
+    perDayLater: 2,
+    perDayLaterReputation: 10,
+    // gorjetas pequenas de propósito: o que prende é a história (D-21)
+    tip: { taste: 15, chapter: 50 },
+    chapterReputation: 0.5,
+    // recompensas do nível 5
+    perks: {
+      cida: { section: 'brasil', purchaseFactor: 1.1 },
+      nina: { extraCurious: 1 },
+      teo: { extraPeople: 1 },
+      bia: { period: 'night', fast: 1.4 },
+      marina: { karaokeWeight: 2 },
+      afonso: { soloSaleChance: 0.35 },
+      rita: { section: 'rock', fanWeight: 1.2 },
+      jorge: { reputation: 5 },
+    },
+  },
+
   // reputação inicial pela importação do histórico (docs/arquitetura/integracao.md)
   history: { minStars: 4, perRecord: 1, max: 15 },
 

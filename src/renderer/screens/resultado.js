@@ -2,12 +2,13 @@
 // animados e as frases de "por quê". Velocidade 1×, 2× ou pular.
 
 import { button, el } from '../dom.js';
-import { drawActor, drawBalloon } from '../scene/atores.js';
+import { drawActor, drawBalloon, portrait } from '../scene/atores.js';
 import { COUNTER_X, SCENE, actorAt, buildTimeline, countersAt } from '../scene/animacao.js';
 import { drawShop } from '../scene/loja.js';
 import { applause, cashRegister, doorBell, setSoundOn, soundOn } from '../scene/sons.js';
 import {
   EVENTS,
+  INSTRUMENT_NAMES,
   PERIOD_NAMES,
   TITLE_NAMES,
   formatDelta,
@@ -15,8 +16,99 @@ import {
   missText,
   playLine,
   reasonText,
+  regularMissText,
   requestText,
 } from '../text.js';
+import { REGULAR_TEXT, fill } from '../textos-clientes.js';
+
+// onde cada cliente "da casa" fica parado na cena (x, em pixels de loja)
+const HOME_X = { cida: 44, nina: 58, teo: 250, bia: 300, marina: 74, afonso: 96, rita: 286, jorge: 310 };
+
+/** Clientes fixos "da casa" que ficam na loja (menos quem acabou de visitar: esse entra pela porta). */
+function homeRegulars(state, result) {
+  const visiting = new Set((result.regulars ?? []).map((o) => o.id));
+  return (state.regulars ?? [])
+    .filter((r) => r.home && !visiting.has(r.id))
+    .map((r) => ({ actor: { regular: r.id, index: 0 }, pose: { x: HOME_X[r.id] ?? 60, base: 101, moving: false, facing: (HOME_X[r.id] ?? 60) > 160 ? -1 : 1 } }));
+}
+
+const hearts = (level, max = 5) => '♥'.repeat(level) + '♡'.repeat(Math.max(0, max - level));
+
+/**
+ * O que os clientes fixos acharam: retrato, a fala (que lembra da última vez) e se o pedido foi
+ * atendido. Quem subiu de nível (ou veio pela primeira vez) tem um capítulo: `onChapter(o)`.
+ */
+function regularsBox(result, state, onChapter) {
+  const outcomes = (result.regulars ?? []).filter((o) => REGULAR_TEXT[o.id]);
+  if (!outcomes.length) return null;
+  const visits = new Map((state.day?.regulars ?? []).map((v) => [v.id, v]));
+  const items = outcomes.map((o) => {
+    const text = REGULAR_TEXT[o.id];
+    const line = fill(text.lines[o.line?.code] ?? text.lines.pleased, o.line, INSTRUMENT_NAMES);
+    const visit = visits.get(o.id);
+    const detail = o.chapterDone
+      ? `capítulo ${o.chapterDone}! +${formatMoney(o.tip)} · amizade ${hearts(o.level)}`
+      : o.pleased
+        ? `gostou! +${formatMoney(o.tip)}`
+        : visit
+          ? regularMissText(visit.cond, o.miss)
+          : 'não foi dessa vez';
+    const scene = o.chapterDone || o.firstVisit;
+    return el(
+      'li',
+      `regular-line${o.pleased ? ' pleased' : ''}`,
+      portrait(o.id),
+      el(
+        'div',
+        null,
+        el('strong', null, text.name),
+        el('p', 'speech', `“${line}”`),
+        el('p', 'muted small', detail),
+        scene ? button(o.chapterDone ? `Ver o capítulo ${o.chapterDone}` : 'Conhecer', 'ghost small', () => onChapter(o)) : null,
+      ),
+    );
+  });
+  return el('div', 'result-regulars hidden', el('p', 'label', 'Clientes fixos'), el('ul', null, ...items));
+}
+
+/** Cena do capítulo: uma fala por vez, com retrato. Fica guardada no caderno para ler de novo. */
+export function chapterDialog(id, chapter, onClose) {
+  const text = REGULAR_TEXT[id];
+  const lines = text?.chapters[chapter] ?? [];
+  let i = 0;
+  const speech = el('p', 'dialog-line');
+  const next = button('Próxima fala', 'primary', () => {
+    i += 1;
+    if (i >= lines.length) return close();
+    show();
+  });
+  const skip = button('Pular', 'ghost small', () => close());
+  const counter = el('span', 'muted small');
+  function show() {
+    speech.textContent = lines[i];
+    counter.textContent = `${i + 1}/${lines.length}`;
+    next.textContent = i === lines.length - 1 ? 'Fechar' : 'Próxima fala';
+  }
+  const box = el(
+    'div',
+    'dialog-backdrop',
+    el(
+      'div',
+      'dialog',
+      el('div', 'dialog-head', portrait(id), el('div', null, el('strong', null, text?.name ?? id), el('p', 'muted small', chapter ? `Capítulo ${chapter}` : 'Primeiro encontro'))),
+      speech,
+      el('div', 'row dialog-actions', counter, skip, next),
+    ),
+  );
+  function close() {
+    box.remove();
+    onClose?.();
+  }
+  show();
+  document.body.append(box);
+  next.focus();
+  return box;
+}
 
 /** Como a loja aparece na cena: melhorias, evento do dia, discos dominados e a moldura de Lendária. */
 export function shopLook(state, result) {
@@ -79,8 +171,18 @@ export function render(root, result, state, ui) {
         ? `Show da banda · ${result.band.players.length} pessoas · ${playLine(result.play, result.P)}`
         : playLine(result.play, result.P);
   const tips = result.tips ?? 0;
-  const tipsLine = tips ? el('p', 'tips hidden', `Inclui ${formatMoney(tips)} de gorjeta dos pedidos atendidos.`) : null;
+  const tipsLine = tips ? el('p', 'tips hidden', `Inclui ${formatMoney(tips)} de gorjeta dos pedidos atendidos e dos clientes fixos.`) : null;
   const requests = requestsBox(result, state);
+  // capítulos novos abrem sozinhos no fim da cena, um de cada vez; o botão abre de novo
+  const openChapter = (o) => chapterDialog(o.id, o.chapterDone ?? 0, () => next.focus());
+  const regulars = regularsBox(result, state, openChapter);
+  const pendingScenes = (result.regulars ?? []).filter((o) => REGULAR_TEXT[o.id] && (o.chapterDone || o.firstVisit));
+  const playScenes = () => {
+    const o = pendingScenes.shift();
+    if (o) chapterDialog(o.id, o.chapterDone ?? 0, playScenes);
+    else next.focus();
+  };
+  const home = homeRegulars(state, result);
   const look = shopLook(state, result);
   const event = EVENTS[result.event];
   const speedButtons = [1, 2].map((s) => {
@@ -123,6 +225,7 @@ export function render(root, result, state, ui) {
       el('div', 'counters', visitors.node, sales.node, revenue.node, reputation.node),
       tipsLine,
       titleUp,
+      regulars,
       reasons,
       requests,
       el('div', 'actions row', next),
@@ -143,6 +246,8 @@ export function render(root, result, state, ui) {
     t = Math.min(timeline.duration, t + dt * speed);
 
     drawShop(ctx, look, nowMs / 1000);
+    // os clientes "da casa" ficam na loja, parados
+    for (const h of home) drawActor(ctx, h.actor, h.pose, t);
     // quem está mais ao fundo é desenhado antes
     const poses = timeline.actors
       .map((a) => ({ a, pose: actorAt(a, t) }))
@@ -177,12 +282,14 @@ export function render(root, result, state, ui) {
       finished = true;
       reasons.classList.remove('hidden');
       requests?.classList.remove('hidden');
+      regulars?.classList.remove('hidden');
       titleUp?.classList.remove('hidden');
       tipsLine?.classList.remove('hidden');
       revenue.value.textContent = formatMoney(result.revenue + tips);
       if (result.play?.fullCombo || (result.mode !== 'passive' && !result.ignored && result.P >= 0.85)) applause();
       ui.resultFinished();
       next.focus();
+      if (pendingScenes.length) playScenes();
     }
     raf = requestAnimationFrame(frame);
   }

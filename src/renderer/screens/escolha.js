@@ -14,7 +14,7 @@ import {
   requestText,
   stars,
 } from '../text.js';
-import { eventBanner, requestBoard, requestedIds } from './quadro.js';
+import { eventBanner, focusedRequest, regularsBoard, requestBoard, requestedIds } from './quadro.js';
 
 // o disco selecionado e o pedido em destaque sobrevivem às atualizações da tela
 let selectedId = null;
@@ -25,7 +25,7 @@ const allRecords = (state) => [...state.shelves.sections.flatMap((s) => s.record
 export function render(root, state, ui) {
   const records = allRecords(state);
   if (selectedId && !records.some((r) => r.id === selectedId)) selectedId = null;
-  const focused = state.day.requests.find((r) => r.id === focusId && r.open);
+  const focused = focusedRequest(state, focusId);
   if (!focused) focusId = null;
   const view = {
     ui,
@@ -56,14 +56,13 @@ export function render(root, state, ui) {
   );
   const arrived = Object.values(state.day.arrivals ?? {}).reduce((a, b) => a + b, 0);
   const arrivals = opening && arrived ? el('p', 'arrivals', `Chegaram ${plural(arrived, 'cópia', 'cópias')} da reposição.`) : null;
-  const board = requestBoard(state, {
-    focus: focusId,
-    onFocus: (id) => {
-      if (id === focusId) return;
-      focusId = id;
-      render(root, state, ui);
-    },
-  });
+  const onFocus = (id) => {
+    if (id === focusId) return;
+    focusId = id;
+    render(root, state, ui);
+  };
+  const board = requestBoard(state, { focus: focusId, onFocus });
+  const regulars = regularsBoard(state, { focus: focusId, onFocus });
 
   const presentations = state.day.presentations.length
     ? el(
@@ -77,7 +76,7 @@ export function render(root, state, ui) {
   const layout = el(
     'div',
     'choose-layout',
-    el('div', 'choose-main', header, eventBanner(state), arrivals, board, presentations, shelves),
+    el('div', 'choose-main', header, eventBanner(state), arrivals, regulars, board, presentations, shelves),
     panel(state, ui),
   );
   root.replaceChildren(el('section', 'screen', layout));

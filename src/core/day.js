@@ -6,6 +6,7 @@ import { BALANCE } from './balance.js';
 import { rent } from './economy.js';
 import { drawEvent } from './events.js';
 import { demandingRequest, generateRequests, isOpenRequest, rewardOf } from './requests.js';
+import { applyVisits, todaysVisits } from './regulars.js';
 import { mulberry32, seedFrom } from './rng.js';
 import { PERIODS, newDay } from './saveFormat.js';
 import { GameError, STORAGE, newRecordEntry, shelfRecords } from './shelves.js';
@@ -55,7 +56,13 @@ export function prepareDay(state, library) {
   const taken = [...carried, ...special].map((r) => r.key);
   if (event === 'karaoke') taken.push('sing');
   const fresh = generateRequests(rng, { dayNumber: number, shelfRecords: shelf, taken });
-  return { ...state, day: { ...state.day, prepared: true, event, requests: [...carried, ...special, ...fresh] } };
+  // clientes fixos: sorteio próprio, para não mudar o evento e os pedidos de quem já tinha o dia
+  const { visits, regulars } = todaysVisits(state, shelf);
+  return {
+    ...state,
+    regulars,
+    day: { ...state.day, prepared: true, event, requests: [...carried, ...special, ...fresh], regulars: visits },
+  };
 }
 
 /** Abre o dia seguinte depois do acerto: as encomendas chegam, e saem o evento e os pedidos. */
@@ -87,6 +94,8 @@ export function cancel(state) {
 /** Aplica o resultado da apresentação ao estado e avança o período. */
 export function settle(state, result, { playId = null } = {}) {
   if (!state.pending || state.pending.songId !== result.songId) throw new GameError('notWaiting');
+  // clientes fixos deste período: amizade, memória e próxima visita
+  state = applyVisits(state, result.regulars);
   const day = state.day;
   const tips = result.tips ?? 0;
   const stockUsed = result.stockUsed ?? {};
@@ -104,6 +113,7 @@ export function settle(state, result, { playId = null } = {}) {
     tips,
     reputationDelta: result.reputationDelta,
     requestsDone: [...done],
+    regulars: (result.regulars ?? []).map((o) => ({ id: o.id, pleased: o.pleased, chapterDone: o.chapterDone })),
   };
   const nextPeriod = PERIODS[PERIODS.indexOf(day.period) + 1] ?? 'closing';
 

@@ -240,6 +240,40 @@ página).
     - O resumo da loja vai ao servidor ao fechar o dia e ao entrar na conta; falha não bloqueia.
 - **Por quê:** tudo que vem do servidor é bônus; o jogo funciona igual sem conta e sem internet.
 
+### D-21 · Clientes fixos
+
+- **Contexto:** a etapa 6 junta personagens com história ao dia da loja
+  ([Clientes fixos](../design/clientes-fixos.md)). O primeiro desenho dava gorjeta de R$ 30 / R$ 80,
+  +1 de reputação por capítulo e uma compra do disco tocado a cada visita atendida, com 2 visitas
+  agradadas por nível e 1 cliente por dia até a reputação 20.
+- **O que o simulador mostrou** (`npm run simular -- --metas` e `--dias 90`):
+
+    | Medida | Primeiro desenho | Depois |
+    |---|---|---|
+    | Lucro com P ≈ 0,5 (alvo R$ 120–180) | R$ 211 | R$ 174 |
+    | Lucro com P ≈ 0,8 (alvo R$ 280–420) | R$ 428 | R$ 380 |
+    | Reputação 50 tocando bem (alvo dia 20–30) | dia 19,9 | dia 20,2 |
+    | Dona Cida "da casa", perfil bom | dia 53 (83% chegam) | dia 44 (90%) |
+    | Nível médio no dia 90, perfil médio | ~2 | ~3,4 |
+
+- **Escolhas:**
+    - O cliente fixo **não compra**: deixa só a gorjeta (R$ 15 no gosto, R$ 50 no capítulo) e o
+      capítulo dá +0,5 de reputação, como um pedido do quadro. A recompensa dele é a história e o
+      bônus do nível 5.
+    - **1 visita agradada por nível** antes do capítulo, e **2 clientes por dia a partir da reputação
+      10** (antes, 1).
+    - Capítulos 1 a 4 mais suaves (2–3 estrelas, desempenho 0,5–0,7); o desafio grande fica no 5
+      (5 estrelas, full combo, desempenho 0,85–0,9). O Seu Afonso continua pedindo Difícil e Expert.
+    - Nível 5: continua visitando a cada 4 a 6 dias, só com pedidos de gosto.
+    - A Rita pede um **show da banda** no capítulo 4 (ela é liberada pelo palco).
+    - O Jorge é um personagem, não um crítico da mistura: não triplica a reputação. A resenha (+5) entra
+      fora da redução perto do topo.
+- **Consequência:** com a jogadora fictícia, que nunca melhora, a Nina, o Téo e o Jorge raramente
+  chegam ao 5 (pedem full combo) e a Rita para no 4 (o simulador não faz show). É de propósito: o
+  capítulo 5 é para treinar a música no Fretshift.
+- :material-help-circle: **A revisar** depois de jogar: se 2 clientes por dia ocupando 2 dos 3
+  períodos ficar apertado; se os capítulos 5 forem difíceis demais.
+
 ## Para a usuária decidir :material-help-circle:
 
 | Pergunta | Proposta atual |

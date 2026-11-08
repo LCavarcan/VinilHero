@@ -45,7 +45,8 @@ test('migração para a versão 2: todo disco começa com 3 cópias; melhorias e
   };
   delete v1.restock;
   const v2 = migrate(structuredClone(v1));
-  assert.equal(v2.version, 2);
+  // passa direto pela versão 2 até a atual
+  assert.equal(v2.version, 3);
   assert.deepEqual(validate(v2), []);
   assert.equal(v2.records.ab.stock, 3);
   assert.equal(v2.records.ab.timesPlayed, 2);
@@ -56,4 +57,15 @@ test('migração para a versão 2: todo disco começa com 3 cópias; melhorias e
   assert.deepEqual(v2.day.playedToday, { ab: 1 });
   assert.deepEqual(v2.day.sold, {});
   assert.equal(v2.day.prepared, false);
+});
+
+test('migração para a versão 3: clientes fixos começam vazios, o dia em andamento sem visitas', () => {
+  const v2 = { ...newSave(1, NOW), version: 2 };
+  delete v2.regulars;
+  delete v2.day.regulars;
+  const v3 = migrate(structuredClone(v2));
+  assert.equal(v3.version, 3);
+  assert.deepEqual(validate(v3), []);
+  assert.deepEqual(v3.regulars, {});
+  assert.deepEqual(v3.day.regulars, []);
 });

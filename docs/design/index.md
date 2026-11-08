@@ -88,6 +88,9 @@ mistura de arquétipos diz *quem* entra.
 
 Os números de mistura e preço ficam em [Progressão e economia](progressao.md) (calibrados na etapa 2).
 
+Além dos arquétipos, a loja tem [clientes fixos](clientes-fixos.md): personagens com nome e história,
+que voltam, lembram das suas apresentações e ficam amigos da loja (etapa 6).
+
 ### Pedidos do dia
 
 Na abertura, 2 ou 3 clientes deixam um pedido no quadro (`src/core/requests.js`). Só saem pedidos que

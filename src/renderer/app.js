@@ -5,6 +5,7 @@ import { $, el, toast } from './dom.js';
 import * as acerto from './screens/acerto.js';
 import * as aguardando from './screens/aguardando.js';
 import * as aovivo from './screens/aovivo.js';
+import * as caderno from './screens/caderno.js';
 import * as vizinhanca from './screens/vizinhanca.js';
 import * as escolha from './screens/escolha.js';
 import * as estoque from './screens/estoque.js';
@@ -31,7 +32,7 @@ let liveFor = null;
 let account = null;
 const liveNow = () => (live && state?.pending && liveFor === state.pending.since ? live : null);
 // telas que a jogadora abriu por cima do fluxo do dia
-let overlay = null; // 'upgrades' | 'stock' | 'stats' | null
+let overlay = null; // 'upgrades' | 'stock' | 'stats' | 'regulars' | 'neighborhood' | null
 // resultados esperando para serem mostrados, um de cada vez
 const results = [];
 let showingResult = null;
@@ -171,6 +172,7 @@ const SCREENS = {
   upgrades: melhorias,
   stock: estoque,
   stats: minhaloja,
+  regulars: caderno,
   neighborhood: vizinhanca,
 };
 // botões do topo → tela (null: a loja, o fluxo do dia)
@@ -179,6 +181,7 @@ const NAV = [
   ['nav-stock', 'stock'],
   ['nav-upgrades', 'upgrades'],
   ['nav-stats', 'stats'],
+  ['nav-regulars', 'regulars'],
   ['nav-neighborhood', 'neighborhood'],
 ];
 

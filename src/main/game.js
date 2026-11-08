@@ -7,6 +7,7 @@ import { cancel, choose, closeDay, openDay, prepareDay, titleOf } from '../core/
 import { buy, rent, upgradeOptions } from '../core/economy.js';
 import { applyLiveEvents, liveForPresentation } from '../core/live.js';
 import { importHistory, processParties, processPlays, resolvePassive } from '../core/plays.js';
+import { recordFits, regularsView } from '../core/regulars.js';
 import { isOpenRequest, recordMatches } from '../core/requests.js';
 import { newSave } from '../core/saveFormat.js';
 import { shopSummary } from '../core/social.js';
@@ -29,11 +30,19 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
   const persist = () => writeSave(file, state);
   const findRecord = (id) => library.find((r) => r.id === id);
 
+  const songTitleOf = (id) => (id ? (findRecord(id)?.title ?? null) : null);
+
   /** Resultado com o que a janela precisa para mostrar (título do disco, loja depois). */
   function decorate(result) {
     const record = findRecord(result.songId);
     return {
       ...result,
+      // as falas dos clientes fixos citam o disco da última vez
+      regulars: (result.regulars ?? []).map((o) => ({
+        ...o,
+        line: { ...o.line, lastSongTitle: songTitleOf(o.line?.lastSongId) },
+        level: state.regulars?.[o.id]?.level ?? 0,
+      })),
       record: { id: result.songId, title: record?.title ?? null, artist: record?.artist ?? null },
       shop: { money: state.shop.money, reputation: state.shop.reputation, title: titleOf(state.shop.reputation) },
       titleBefore: titleOf(state.shop.reputation - result.reputationDelta),
@@ -99,8 +108,20 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
       songTitle: r.songId ? (findRecord(r.songId)?.title ?? null) : undefined,
       matches: shelf.filter((rec) => recordMatches(r, rec)).map((rec) => rec.id),
     }));
+    // clientes fixos de hoje, com os discos que atendem o pedido de cada um
+    const visits = (state.day.regulars ?? []).map((v) => ({
+      ...v,
+      open: !v.done,
+      songTitle: songTitleOf(v.cond.songId) ?? undefined,
+      matches: shelf.filter((rec) => recordFits(v.cond, rec)).map((rec) => rec.id),
+    }));
+    const regulars = regularsView(state).map((r) => ({
+      ...r,
+      bestSongTitle: songTitleOf(state.regulars?.[r.id]?.last?.songId),
+    }));
     return {
-      day: { ...state.day, requests },
+      day: { ...state.day, requests, regulars: visits },
+      regulars,
       shop: { ...state.shop, title: titleOf(state.shop.reputation) },
       pending: state.pending && { ...state.pending, title: findRecord(state.pending.songId)?.title ?? null },
       rent: rent(state),

@@ -154,3 +154,26 @@ test('estoque pelo jogo: repor grava a encomenda, a reposição automática liga
   assert.deepEqual(reopened.restock.orders, { a1: 2 });
   assert.equal(reopened.restock.auto, true);
 });
+
+test('clientes fixos: o quadro de hoje com os discos que servem, o caderno e a fala no resultado', (t) => {
+  const { make, tick } = setup(t);
+  const charts = { drums: { Easy: 100, Medium: 200, Hard: 300, Expert: 400 } };
+  const lib = library.map((r) => ({ ...r, instruments: ['drums'], totalNotes: charts }));
+  const game = make();
+  let view = game.start(lib, []);
+  // dia 1: a Dona Cida vem de manhã e quer um disco do Brasil (Asa Branca)
+  assert.deepEqual(view.day.regulars.map((v) => [v.id, v.period]), [['cida', 'morning']]);
+  assert.deepEqual(view.day.regulars[0].matches, ['a1']);
+  assert.equal(view.regulars.length, 8);
+  assert.equal(view.regulars.find((r) => r.id === 'cida').met, false);
+
+  game.choose({ songId: 'a1', mode: 'play' });
+  const [result] = game.onPlays([play('p1', 'a1', tick(5))]);
+  const cida = result.regulars[0];
+  assert.equal(cida.id, 'cida');
+  assert.equal(cida.pleased, true);
+  assert.equal(cida.firstVisit, true);
+  view = game.view();
+  assert.equal(view.regulars.find((r) => r.id === 'cida').met, true);
+  assert.equal(view.day.regulars[0].done, true);
+});

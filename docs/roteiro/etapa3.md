@@ -67,7 +67,7 @@ e não atendidos, um disco esgotado, e o instalador funciona num PC sem Node.
       `VinilHero.exe` empacotado abre e cria a loja sozinho (com o runtime dele, sem o Node do projeto)
 - [ ] instalar o `VinilHero-Setup` num PC sem Node
 - [ ] 7 dias jogados
-- [ ] commit "Etapa 3: pedidos, estoque e eventos"
+- [x] commit "Etapa 3: pedidos, estoque e eventos"
 
 !!! note "Diferenças do plano"
     - Pedidos só valem tocando, e os valores das gorjetas foram definidos aqui

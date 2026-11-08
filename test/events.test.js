@@ -50,13 +50,16 @@ test('eventos liberados: karaokê precisa da cabine, cliente exigente de reputa�
   const booth = { ...s, upgrades: { ...s.upgrades, booth: 1 } };
   assert.deepEqual(unlockedEvents(booth), ['rush', 'rain', 'karaoke']);
   const famous = { ...booth, shop: { ...s.shop, reputation: 30 } };
-  assert.deepEqual(unlockedEvents(famous), EVENTS);
+  assert.deepEqual(unlockedEvents(famous), ['rush', 'rain', 'karaoke', 'demanding']);
   assert.deepEqual(unlockedEvents(famous, { demandingOpen: true }), ['rush', 'rain', 'karaoke']);
+  // a Festa da Bia: só com a Bia "da casa"
+  const bia = { ...famous, regulars: { bia: { level: 5 } } };
+  assert.deepEqual(unlockedEvents(bia), EVENTS);
 });
 
 test('no máximo um evento por dia, às vezes nenhum, e todos os liberados aparecem', () => {
   const famous = { ...newSave(1, NOW), shop: { money: 0, reputation: 40 } };
-  const state = { ...famous, upgrades: { ...famous.upgrades, booth: 1 } };
+  const state = { ...famous, upgrades: { ...famous.upgrades, booth: 1 }, regulars: { bia: { level: 5 } } };
   const seen = new Map();
   for (let seed = 0; seed < 400; seed++) {
     const e = drawEvent(mulberry32(seed), state);

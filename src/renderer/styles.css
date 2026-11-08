@@ -287,3 +287,45 @@ button.secondary:hover:not(:disabled) { background: var(--line); }
 .friend-shops { list-style: none; padding: 0; margin: 8px 0 14px; display: flex; flex-direction: column; gap: 10px; }
 .friend-shop { display: grid; grid-template-columns: 36px 1fr; gap: 12px; padding: 10px 12px; border-radius: 10px; background: var(--panel-2); }
 .friend-shop > div { display: flex; flex-direction: column; gap: 2px; }
+
+/* ---------- Clientes fixos (docs/design/clientes-fixos.md) ---------- */
+.portrait { width: 40px; height: 60px; image-rendering: pixelated; border-radius: 6px; flex: none; }
+.regulars-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.regular-note {
+  display: flex; gap: 10px; align-items: flex-start; padding: 9px 11px; border-radius: 10px; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--line); transition: transform .1s, box-shadow .1s;
+}
+.regular-note:hover, .regular-note.focus { transform: translateY(-2px); box-shadow: 0 0 0 2px var(--accent); }
+.regular-note.chapter { border-color: #c9a227; }
+.regular-note.done { opacity: .55; cursor: default; }
+.regular-note .note-hint { color: var(--muted); }
+.regular-note .note-reward { color: var(--green); }
+.regular-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.regular-name { font-weight: 700; color: var(--accent); }
+.regular-name small { color: var(--muted); font-weight: 400; }
+.regular-needs { font-size: 12px; color: var(--yellow); font-style: italic; }
+.result-regulars { animation: fade .5s; }
+.result-regulars ul { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.regular-line { display: flex; gap: 10px; align-items: flex-start; }
+.regular-line .speech { font-style: italic; }
+.regular-line.pleased strong { color: var(--green); }
+.dialog-backdrop { position: fixed; inset: 0; background: #0009; display: flex; align-items: flex-end; justify-content: center; padding: 32px; z-index: 50; animation: fade .3s; }
+.dialog { background: var(--panel); border: 2px solid var(--accent); border-radius: 14px; padding: 16px 18px; width: min(640px, 100%); display: flex; flex-direction: column; gap: 12px; box-shadow: 0 8px 0 #0008; }
+.dialog-head { display: flex; gap: 12px; align-items: center; }
+.dialog-head .portrait { width: 56px; height: 84px; }
+.dialog-line { font-size: 18px; min-height: 3em; }
+.dialog-actions { justify-content: flex-end; align-items: center; gap: 8px; }
+.dialog-actions .muted { margin-right: auto; }
+.regular-cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+.regular-card { display: flex; gap: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.regular-card.home { border-color: #c9a227; }
+.regular-card.unknown { align-items: center; opacity: .8; }
+.regular-card-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.regular-card-body .row { justify-content: space-between; }
+.regular-card .home { color: #f1c40f; font-size: 13px; }
+.regular-card .chapters { flex-wrap: wrap; gap: 6px; }
+.hearts { color: #ff7ab8; letter-spacing: 2px; }
+.hearts .empty { color: #5a5470; }
+.upgrade-wanted { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 13px; font-style: italic; color: var(--yellow); }
+.upgrade-wanted .portrait { width: 24px; height: 36px; }
+.dialog-actions, .regular-card .chapters, .regular-card-body .row { display: flex; align-items: center; }

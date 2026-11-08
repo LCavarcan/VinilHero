@@ -44,9 +44,10 @@ export function customerMix({ difficulty, period, reputation, criticToday = fals
 
 /**
  * Sorteia `count` visitantes. Fã de seção recebe uma das `sections` (as que têm discos); sem
- * seções, ele não aparece. Músico recebe um instrumento.
+ * seções, ele não aparece. Músico recebe um instrumento. `sectionWeights`: peso de algumas seções
+ * para os fãs (sem ele, todas valem igual).
  */
-export function drawVisitors(rng, count, mix, sections) {
+export function drawVisitors(rng, count, mix, sections, sectionWeights = null) {
   let weights = sections.length ? mix : { ...mix, sectionFan: 0 };
   const visitors = [];
   for (let i = 0; i < count; i++) {
@@ -55,7 +56,11 @@ export function drawVisitors(rng, count, mix, sections) {
     // no máximo um crítico por dia
     if (archetype === 'critic') weights = { ...weights, critic: 0 };
     const v = { archetype };
-    if (archetype === 'sectionFan') v.section = sections[Math.floor(rng() * sections.length)];
+    if (archetype === 'sectionFan') {
+      v.section = sectionWeights
+        ? pick(rng, Object.fromEntries(sections.map((id) => [id, sectionWeights[id] ?? 1])))
+        : sections[Math.floor(rng() * sections.length)];
+    }
     if (archetype === 'musician') v.instrument = INSTRUMENTS[Math.floor(rng() * INSTRUMENTS.length)];
     visitors.push(v);
   }

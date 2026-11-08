@@ -93,3 +93,18 @@ test('ao vivo: a plateia cresce com o combo e alguém desiste com 3 erros seguid
   run({ combo: 0, misses: 4 }, 3);
   assert.ok(crowd.actors.filter((a) => !a.leaving).length <= 4);
 });
+
+test('clientes fixos entram a mais: não contam como visitantes, mas a compra conta', () => {
+  const withRegulars = {
+    ...result,
+    regulars: [
+      { id: 'cida', archetype: 'sectionFan', pleased: true, bought: 'a1', price: 70 },
+      { id: 'jorge', archetype: 'critic', pleased: false },
+    ],
+  };
+  const tl = buildTimeline(withRegulars);
+  assert.deepEqual(countersAt(tl, tl.duration), { visitors: 3, sales: 3, revenue: 250 });
+  const cida = tl.actors.find((a) => a.regular === 'cida');
+  assert.equal(cida.balloon.icon, 'buy');
+  assert.equal(tl.actors.find((a) => a.regular === 'jorge').balloon.icon, 'hmm');
+});

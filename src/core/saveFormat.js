@@ -4,7 +4,7 @@
 import { BALANCE } from './balance.js';
 
 export const SAVE_FORMAT = 'vinilhero-save';
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 export const PERIODS = ['morning', 'afternoon', 'night'];
 // depois da noite o dia fica "closing" (falta o acerto) e, depois do acerto, "closed"
 export const DAY_PHASES = [...PERIODS, 'closing', 'closed'];
@@ -26,6 +26,8 @@ export function newDay(number) {
     sold: {},
     criticSeen: false,
     arrivals: {},
+    // clientes fixos que vêm hoje, com o pedido de cada um (docs/design/clientes-fixos.md)
+    regulars: [],
   };
 }
 
@@ -48,6 +50,8 @@ export function newSave(seed, now) {
     // reposição de estoque: cópias encomendadas (chegam na abertura do dia seguinte) e automática
     restock: { orders: {}, auto: false },
     records: {},
+    // clientes fixos: amizade, memória e próxima visita de cada um
+    regulars: {},
     processedPlays: [],
     historyImported: false,
     stats: { days: 0, visitors: 0, sales: 0, revenue: 0, fullCombos: 0 },
@@ -61,6 +65,7 @@ export function migrate(save) {
   if (save.version > SAVE_VERSION) throw new Error('Save criado por uma versão mais nova do VinilHero');
   let s = save;
   if (s.version === 1) s = toVersion2(s);
+  if (s.version === 2) s = toVersion3(s);
   return s;
 }
 
@@ -78,6 +83,14 @@ function toVersion2(save) {
     // o dia em andamento ganha os campos novos; pedidos e evento são sorteados na próxima abertura do jogo
     day: { ...newDay(save.day.number), ...save.day, prepared: false },
   };
+}
+
+/**
+ * Versão 3 (etapa 6): clientes fixos. Eles começam a vir na próxima abertura de dia (o dia em
+ * andamento já foi sorteado).
+ */
+function toVersion3(save) {
+  return { ...save, version: 3, regulars: save.regulars ?? {}, day: { ...save.day, regulars: save.day.regulars ?? [] } };
 }
 
 const isNumber = (x) => typeof x === 'number' && Number.isFinite(x);

@@ -18,7 +18,7 @@ Todos gravados com escrita atômica (`.tmp` + renomear), com o mesmo `store.js` 
 ```json
 {
   "format": "vinilhero-save",
-  "version": 2,
+  "version": 3,
   "seed": 2873461923,
   "createdAt": "2026-11-06T…",
   "shop": { "name": "VinilHero", "money": 840, "reputation": 37.4 },
@@ -64,9 +64,11 @@ Todos gravados com escrita atômica (`.tmp` + renomear), com o mesmo `store.js` 
 
 | Campo | Observação |
 |---|---|
-| `version` | sobe a cada mudança de formato; `saveFormat.js` tem `migrate(save)` de versão em versão. Versão 2 (etapa 3): estoque, reposição, melhorias novas, pedidos e eventos. Um save da versão 1 ganha 3 cópias em cada disco e os pedidos do dia em andamento são sorteados na próxima abertura |
+| `version` | sobe a cada mudança de formato; `saveFormat.js` tem `migrate(save)` de versão em versão. Versão 2 (etapa 3): estoque, reposição, melhorias novas, pedidos e eventos. Um save da versão 1 ganha 3 cópias em cada disco e os pedidos do dia em andamento são sorteados na próxima abertura. Versão 3 (etapa 6): clientes fixos (`regulars` e `day.regulars`); eles começam a vir na próxima abertura de dia |
 | `day.prepared` | o evento e os pedidos do dia já foram sorteados (com a semente do dia; precisa da biblioteca para só pedir o que existe) |
 | `day.requests` | os pedidos do quadro. O do cliente exigente tem `expiresDay` e passa para os dias seguintes; os outros valem só no dia |
+| `regulars` | um registro por cliente fixo que a loja já conhece: `met`, `level` (0 a 5), `pleased` (visitas agradadas no nível), `visits`, `nextVisitDay`, `chapterCond` (o pedido do capítulo guardado, volta igual), `last` (a última apresentação para ele: disco, instrumento, dificuldade, estrelas, P, dia), `bestP`, `seenChapters` ([Clientes fixos](../design/clientes-fixos.md)) |
+| `day.regulars` | quem vem hoje: `{ id, period, kind, chapter, cond, tip, blockedBy, done }` |
 | `day.sold` / `day.arrivals` | cópias vendidas hoje por disco (para a reposição automática) / cópias que chegaram na abertura |
 | `day.criticSeen` | já veio um crítico hoje (no máximo um por dia) |
 | `restock` | `orders`: cópias pagas que chegam na próxima abertura; `auto`: reposição automática ([D-16](../decisoes/index.md#d-16-reposicao-automatica-no-save)) |

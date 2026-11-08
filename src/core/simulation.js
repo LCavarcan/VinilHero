@@ -5,12 +5,14 @@ import { BALANCE } from './balance.js';
 import { customerMix, drawVisitors } from './customers.js';
 import { eventFactor, isKaraokeNight } from './events.js';
 import { PASSIVE_P, performanceOf, performanceOfBand } from './performance.js';
+import { hasPerk, resolveVisits } from './regulars.js';
 import { fulfilled, gaveUp, isOpenRequest, missReason } from './requests.js';
 import { between } from './rng.js';
 
 const V = BALANCE.visitors;
 const BUY = BALANCE.purchase;
 const REP = BALANCE.reputation;
+const PERKS = BALANCE.regulars.perks;
 
 /**
  * Número de visitantes: V = arredondar(B · (0,6 + 0,9·P) · D · R · T · S · E), com
@@ -103,7 +105,8 @@ export function resolvePresentation({
   const karaokeNight = isKaraokeNight(event, period);
   // show da banda: cada pessoa é uma "partida"; a de dificuldade mais alta representa a banda
   const show = mode === 'show' && !!band?.players?.length;
-  const bandPerf = show ? performanceOfBand(band) : null;
+  // o Téo "da casa" toca junto: a banda conta uma pessoa a mais
+  const bandPerf = show ? performanceOfBand(band, { extraPeople: hasPerk(state, 'teo') ? PERKS.teo.extraPeople : 0 }) : null;
   const plays = show ? band.players : play ? [play] : [];
   if (show) play = leadOf(band.players);
   const played = (mode === 'play' && !!play) || show;
@@ -141,7 +144,11 @@ export function resolvePresentation({
     booth: (upgrades.booth ?? 0) > 0,
     karaokeNight,
   });
-  const drawn = drawVisitors(rng, count, mix, sections);
+  // a Rita "da casa": o pôster dela atrai mais fãs de Rock e Metal
+  const sectionWeights = hasPerk(state, 'rita') ? { [PERKS.rita.section]: PERKS.rita.fanWeight } : null;
+  const drawn = drawVisitors(rng, count, mix, sections, sectionWeights);
+  // a Nina "da casa": o cartaz dela na vitrine traz mais um curioso
+  if (hasPerk(state, 'nina')) for (let i = 0; i < PERKS.nina.extraCurious; i++) drawn.push({ archetype: 'curious' });
 
   // estoque: cada venda consome uma cópia; disco esgotado passa a vez para outro da seção
   const stock = new Map();
@@ -174,6 +181,8 @@ export function resolvePresentation({
   const windowFactor = BALANCE.upgrades.window.purchaseFactor[upgrades.window ?? 0] ?? 1;
   const liveBonus = Math.min(BALANCE.live.starPowerMaxBonus, (live?.starPowerCount ?? 0) * BALANCE.live.starPowerBonus);
   const cafe = (upgrades.cafe ?? 0) > 0;
+  // a Dona Cida "da casa": a sanfona do Zé na parede ajuda os discos da seção Brasil
+  const cidaFactor = hasPerk(state, 'cida') && record.section === PERKS.cida.section ? PERKS.cida.purchaseFactor : 1;
   const ctx = { record, play: passive ? null : play, P, instruments, difficulties };
 
   const visitors = drawn.map((v) => {
@@ -182,6 +191,7 @@ export function resolvePresentation({
       affinity(v, ctx) *
       (BUY.performanceMin + BUY.performanceSlope * P) *
       windowFactor *
+      cidaFactor *
       (1 + liveBonus);
     if (!(rng() < chance)) return { ...v, bought: null, price: 0 };
     const bought = chooseRecord();
@@ -207,7 +217,9 @@ export function resolvePresentation({
   for (const r of shelfRecords) {
     if (soloSales.length >= M.soloSaleMaxPerPeriod) break;
     if (!r.mastered) continue;
-    if (rng() < M.soloSaleChance && stock.get(r.id) > 0) {
+    // o Seu Afonso "da casa": a coleção dele atrai mais colecionadores de passagem
+    const soloChance = hasPerk(state, 'afonso') ? PERKS.afonso.soloSaleChance : M.soloSaleChance;
+    if (rng() < soloChance && stock.get(r.id) > 0) {
       take(r.id);
       soloSales.push({ songId: r.id, price: M.soloSalePrice });
     }
@@ -223,15 +235,20 @@ export function resolvePresentation({
   const missed = openRequests
     .filter((r) => !done.includes(r) && !failed.includes(r))
     .map((r) => ({ id: r.id, ...missReason(r, presentation) }));
-  const tips = done.reduce((sum, r) => sum + r.tip, 0);
-  const requestBonus = done.reduce((sum, r) => sum + r.reputation, 0);
+  // clientes fixos deste período: atendido, ele deixa a gorjeta (não compra: a recompensa dele é a
+  // amizade, não o dinheiro; ver D-21)
+  const regulars = resolveVisits(state, { period, record, each, show, passive });
+  const tips = done.reduce((sum, r) => sum + r.tip, 0) + regulars.reduce((sum, o) => sum + o.tip, 0);
+  const requestBonus = done.reduce((sum, r) => sum + r.reputation, 0) + regulars.reduce((sum, o) => sum + o.reputation, 0);
 
   const revenue =
     visitors.reduce((sum, v) => sum + v.price + (v.extraPrice ?? 0), 0) + soloSales.reduce((sum, x) => sum + x.price, 0);
   const sales = Object.values(stockUsed).reduce((a, b) => a + b, 0);
   const critic = visitors.some((v) => v.archetype === 'critic');
   const fullCombo = !passive && plays.every((p) => !!p.fullCombo);
-  const delta = reputationDelta({ P, mode: passive ? 'passive' : 'play', critic, fullCombo, requestBonus, reputation });
+  const delta =
+    reputationDelta({ P, mode: passive ? 'passive' : 'play', critic, fullCombo, requestBonus, reputation }) +
+    regulars.reduce((sum, o) => sum + o.bonusReputation, 0);
 
   return {
     songId: record.id,
@@ -264,6 +281,7 @@ export function resolvePresentation({
     requestsDone: done.map((r) => r.id),
     requestsFailed: failed.map((r) => r.id),
     requestsMissed: missed,
+    regulars,
     reasons: reasonsFor({
       visitors,
       passive,

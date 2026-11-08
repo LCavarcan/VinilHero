@@ -1,7 +1,9 @@
 // Melhorias da loja: preço, nível, requisito e o botão Comprar.
 
 import { button, el } from '../dom.js';
+import { portrait } from '../scene/atores.js';
 import { ERRORS, SECTION_NAMES, UPGRADES, formatMoney } from '../text.js';
+import { REGULAR_TEXT } from '../textos-clientes.js';
 
 export function render(root, state, ui) {
   const list = el('ul', 'upgrades');
@@ -70,5 +72,10 @@ function item(option, state, ui) {
     );
   }
   if (why && option.price !== null) li.append(el('p', 'muted small why', why));
+  // clientes fixos esperando esta melhoria para o próximo capítulo
+  for (const r of (state.regulars ?? []).filter((x) => x.needs?.upgrade === option.id)) {
+    const text = REGULAR_TEXT[r.id];
+    if (text) li.append(el('p', 'upgrade-wanted', portrait(r.id), `${text.name}: “${text.needs?.[option.id] ?? ''}”`));
+  }
   return li;
 }

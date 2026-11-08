@@ -32,6 +32,8 @@ const BALLOON = 1.1; // segundos com o balão na cabeça
  * 'music' (cantando junto), 'wow' (que solo!), 'hmm' (não se animou) ou null.
  */
 export function balloonFor(visitor, result, key) {
+  // cliente fixo: sempre reage (a fala dele aparece embaixo da cena)
+  if (visitor.regular) return visitor.pleased ? (visitor.bought ? 'buy' : 'wow') : 'hmm';
   const great = result.mode !== 'passive' && !result.ignored && result.P >= 0.85;
   if (visitor.noStock) return 'sold-out';
   if (visitor.archetype === 'karaoke' && result.play?.instrument === 'vocals' && !result.ignored) return 'music';
@@ -49,6 +51,14 @@ export function balloonFor(visitor, result, key) {
 export function buildTimeline(result) {
   const visitors = [
     ...(result.visitors ?? []),
+    // clientes fixos entram a mais: não contam como visitantes, mas a compra conta
+    ...(result.regulars ?? []).map((o) => ({
+      archetype: o.archetype,
+      regular: o.id,
+      pleased: o.pleased,
+      bought: o.bought ?? null,
+      price: o.price ?? 0,
+    })),
     ...(result.soloSales ?? []).map((x) => ({ archetype: 'collector', bought: x.songId, price: x.price, solo: true })),
   ];
   const gap = visitors.length ? Math.min(MAX_GAP, ENTRY_WINDOW / visitors.length) : 0;
@@ -64,7 +74,7 @@ export function buildTimeline(result) {
     let t = segments[0].t1 + browse;
     // parado olhando a prateleira
     segments.push({ t0: segments[0].t1, t1: t, x0: shelfX, x1: shelfX, browsing: true });
-    events.push({ t: t0, type: 'enter', actor: i, solo: !!v.solo });
+    events.push({ t: t0, type: 'enter', actor: i, solo: !!v.solo || !!v.regular });
     const icon = balloonFor(v, result, key);
     const balloon = icon ? { icon, t0: t - 0.5, t1: t - 0.5 + BALLOON } : null;
     if (v.bought) {

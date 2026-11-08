@@ -71,6 +71,7 @@ nav:
       - Performance e movimento: design/performance.md
       - Progressão e economia: design/progressao.md
       - Eventos: design/eventos.md
+      - Clientes fixos: design/clientes-fixos.md
   - Arquitetura:
       - arquitetura/index.md
       - Integração com o Fretshift: arquitetura/integracao.md
@@ -85,3 +86,4 @@ nav:
       - "3. Clientes, estoque e eventos": roteiro/etapa3.md
       - "4. Loja ao vivo": roteiro/etapa4.md
       - "5. Lojas rivais": roteiro/etapa5.md
+      - "6. Clientes fixos": roteiro/etapa6.md
