@@ -209,6 +209,24 @@ página).
 - **Consequência:** a 0.0.1 (sem atualizador) precisa ser trocada à mão uma vez pela 0.1.0; daí em
   diante as versões chegam sozinhas.
 
+### D-19 · Detalhes do show da banda e da cena ao vivo
+
+- **Contexto:** o design dizia "a mistura junta os ajustes de todos" e "fila na porta cresce com o
+  combo", sem os detalhes.
+- **Escolhas:**
+    - Show: média dos ajustes de dificuldade; o `E` da banda multiplica o do evento; pedido atendido se
+      alguém da banda atende; full combo só com todos; partidas em grupo fora do histórico dos discos
+      ([regras](../design/eventos.md#show-da-banda)).
+    - Plateia ao vivo: 1 pessoa + 1 a cada 10 notas de combo (até 10; +2 no Star Power). 3 erros em 2 s
+      fazem a última pessoa da fila ir embora. Star Power: luz roxa e "!" em todo mundo.
+    - Sair da música no meio (`songEnd` incompleto) zera a cena e os Star Power daquela tentativa.
+    - O resultado depois da cena ao vivo começa com todo mundo dentro da loja (não anima a entrada de
+      novo).
+    - "Tocar no Fretshift" escolhe o disco **e** abre o Fretshift nele (um clique só). Sem o executável,
+      a escolha vale do mesmo jeito.
+- **Por quê:** a ponte só anima; tudo que muda dinheiro e reputação continua vindo das partidas
+  gravadas, e o jogo funciona igual sem ela (fora o bônus de Star Power).
+
 ## Para a usuária decidir :material-help-circle:
 
 | Pergunta | Proposta atual |

@@ -32,7 +32,7 @@ const BALLOON = 1.1; // segundos com o balão na cabeça
  * 'music' (cantando junto), 'wow' (que solo!), 'hmm' (não se animou) ou null.
  */
 export function balloonFor(visitor, result, key) {
-  const great = result.mode === 'play' && !result.ignored && result.P >= 0.85;
+  const great = result.mode !== 'passive' && !result.ignored && result.P >= 0.85;
   if (visitor.noStock) return 'sold-out';
   if (visitor.archetype === 'karaoke' && result.play?.instrument === 'vocals' && !result.ignored) return 'music';
   if (visitor.bought) return visitor.archetype === 'musician' && great ? 'wow' : 'buy';

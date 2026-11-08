@@ -16,9 +16,18 @@ dia, então fechar e abrir o jogo não muda o evento. O show da banda é sempre 
 - Desempenho da banda: `P_banda = média dos P`, e `E = 1 + 0,25 × (pessoas − 1)` (2 pessoas = 1,25,
   4 pessoas = 1,75).
 - Se alguém da banda tiver P < 0,3, o público nota: `E` cai pela metade do bônus.
-- A mistura de clientes junta os ajustes de dificuldade de todos; cada músico da plateia vê "o
-  instrumento dele" se alguém da banda o tocou.
+- A mistura de clientes junta os ajustes de dificuldade de todos (a média dos ajustes, e a média dos
+  fatores de dificuldade no número de visitantes); cada músico da plateia vê "o instrumento dele" se
+  alguém da banda o tocou; colecionadores se animam se alguém tocou em Difícil ou Expert.
+- `E` da banda multiplica o do evento do dia. Full combo só vale se todos fizerem.
+- Pedido do quadro é atendido se **alguém** da banda atende (a voz atende "pra cantar junto").
+- Na Noite de karaokê, o show conta se alguém cantou.
+- Quem "representa" a banda no resultado é a pessoa na dificuldade mais alta (depois, mais estrelas).
 - Show com uma pessoa só funciona, mas sem bônus (`E = 1`).
+- Na escolha, o botão **Show da banda** aparece com o palco. Partidas em grupo não entram no
+  histórico dos discos (melhor P, dominados): só as partidas solo do `scores.json` contam.
+
+Números em `BALANCE.show` (`src/core/balance.js`).
 
 ## Noite de karaokê
 

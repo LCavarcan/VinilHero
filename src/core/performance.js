@@ -24,6 +24,20 @@ export function performanceOf(play) {
   return B.weights.accuracy * a + B.weights.stars * s + B.weights.combo * c;
 }
 
+/**
+ * Show da banda: `P` = média dos P de quem tocou; `E` = 1 + 0,25·(pessoas − 1), com metade do bônus
+ * se alguém tocou com P < 0,3 (o público nota). `party`: uma entrada do party.json do Fretshift.
+ */
+export function performanceOfBand(party) {
+  const S = BALANCE.show;
+  const players = (party.players ?? []).map((p) => ({ ...p, P: performanceOf(p) }));
+  if (!players.length) return { P: 0, E: 1, weak: false, players };
+  const P = players.reduce((sum, p) => sum + p.P, 0) / players.length;
+  const weak = players.some((p) => p.P < S.weakP);
+  const bonus = S.perPerson * (players.length - 1) * (weak ? S.weakCut : 1);
+  return { P, E: 1 + bonus, weak, players };
+}
+
 function clamp01(x) {
   return Number.isFinite(x) ? Math.min(1, Math.max(0, x)) : 0;
 }

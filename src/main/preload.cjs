@@ -12,12 +12,15 @@ contextBridge.exposeInMainWorld('api', {
   fretshift: {
     status: invoke('fretshift:status'),
     pickDir: invoke('fretshift:pick-dir'),
+    pickExe: invoke('fretshift:pick-exe'),
+    launch: invoke('fretshift:launch'),
     onStatus: on('fretshift:status'),
   },
   state: {
     get: invoke('state:get'),
     onChange: on('state:changed'),
   },
+  live: { onUpdate: on('live:update') },
   day: {
     choose: invoke('day:choose'),
     cancel: invoke('day:cancel'),

@@ -75,6 +75,9 @@ export const BALANCE = deepFreeze({
 
   // bônus da ponte ao vivo (etapa 4)
   live: { starPowerBonus: 0.05, starPowerMaxBonus: 0.15 },
+  // show da banda (palco + "Jogar juntos" do Fretshift): E = 1 + 0,25·(pessoas − 1); alguém com
+  // P < 0,3 corta metade do bônus. Ver docs/design/eventos.md#show-da-banda
+  show: { perPerson: 0.25, weakP: 0.3, weakCut: 0.5 },
 
   // ---------- Progressão e economia (docs/design/progressao.md) ----------
   start: { money: 300, reputation: 5, shelvesPerSection: 1 },

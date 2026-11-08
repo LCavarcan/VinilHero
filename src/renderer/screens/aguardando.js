@@ -7,16 +7,30 @@ const time = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digi
 
 export function render(root, state, ui) {
   const { pending } = state;
+  const show = pending.mode === 'show';
+  const status = ui.status();
+  const open = status?.canLaunch
+    ? button('Abrir no Fretshift', 'secondary', () => ui.launch(pending.songId))
+    : button('Onde está o Fretshift?', 'ghost', () => ui.pickExe(), {
+        title: 'Escolha o Fretshift.exe para o VinilHero abrir a música direto',
+      });
   root.replaceChildren(
     el(
       'section',
       'screen empty waiting',
       el('span', 'disc big spinning', ''),
-      el('p', 'label', `${PERIOD_NAMES[pending.period]} · aguardando a apresentação`),
-      el('h1', null, 'Toque ', el('em', null, pending.title ?? 'o disco'), ' no Fretshift'),
-      el('p', null, 'Qualquer instrumento e dificuldade. Vale a primeira partida completa depois desta escolha.'),
+      el('p', 'label', `${PERIOD_NAMES[pending.period]} · aguardando ${show ? 'o show da banda' : 'a apresentação'}`),
+      show
+        ? el('h1', null, 'Toque ', el('em', null, pending.title ?? 'o disco'), ' no "Jogar juntos"')
+        : el('h1', null, 'Toque ', el('em', null, pending.title ?? 'o disco'), ' no Fretshift'),
+      show
+        ? el('p', null, 'Com 2 a 4 pessoas, cada uma no seu instrumento. Vale a primeira partida em grupo depois desta escolha.')
+        : el('p', null, 'Qualquer instrumento e dificuldade. Vale a primeira partida completa depois desta escolha.'),
       el('p', 'muted small', `Escolhido às ${time.format(new Date(pending.since))}. Pode deixar o VinilHero aberto ou fechado: a partida conta do mesmo jeito.`),
-      button('Cancelar e escolher outro disco', 'ghost', () => ui.act(window.api.day.cancel())),
+      status?.live?.port
+        ? el('p', 'muted small', 'Com a "Integração com o VinilHero" ligada nas configurações do Fretshift, a loja reage enquanto você toca.')
+        : null,
+      el('div', 'row-buttons', open, button('Cancelar e escolher outro disco', 'ghost', () => ui.act(window.api.day.cancel()))),
     ),
   );
 }

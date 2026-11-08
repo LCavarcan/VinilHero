@@ -19,7 +19,7 @@ import {
 } from '../text.js';
 
 /** Como a loja aparece na cena: melhorias, evento do dia, discos dominados e a moldura de Lendária. */
-function shopLook(state, result) {
+export function shopLook(state, result) {
   const shelf = state.shelves.sections.flatMap((s) => s.records);
   return {
     upgrades: state.upgrades,
@@ -71,7 +71,12 @@ export function render(root, result, state, ui) {
   const reasons = el('ul', 'reasons hidden', ...shownReasons.map(reasonText).filter(Boolean).map((t) => el('li', null, t)));
   const titleUp = result.shop.title !== result.titleBefore ? el('p', 'title-up hidden', `A loja agora é: ${TITLE_NAMES[result.shop.title]}!`) : null;
 
-  const subtitle = result.mode === 'passive' ? 'Só pôs o disco pra tocar' : playLine(result.play, result.P);
+  const subtitle =
+    result.mode === 'passive'
+      ? 'Só pôs o disco pra tocar'
+      : result.mode === 'show'
+        ? `Show da banda · ${result.band.players.length} pessoas · ${playLine(result.play, result.P)}`
+        : playLine(result.play, result.P);
   const tips = result.tips ?? 0;
   const tipsLine = tips ? el('p', 'tips hidden', `Inclui ${formatMoney(tips)} de gorjeta dos pedidos atendidos.`) : null;
   const requests = requestsBox(result, state);
@@ -124,11 +129,12 @@ export function render(root, result, state, ui) {
   );
 
   let speed = getSpeed();
-  let t = 0;
+  // depois da cena ao vivo, quem entrou já foi visto: começa com todo mundo dentro da loja
+  let t = result.fromLive ? Math.max(0, ...timeline.events.filter((e) => e.type === 'enter').map((e) => e.t)) : 0;
   let last = performance.now();
   let finished = false;
   let raf = 0;
-  let played = 0;
+  let played = timeline.events.filter((e) => e.t <= t).length;
 
   function frame(nowMs) {
     const dt = Math.min(0.1, (nowMs - last) / 1000);
@@ -173,7 +179,7 @@ export function render(root, result, state, ui) {
       titleUp?.classList.remove('hidden');
       tipsLine?.classList.remove('hidden');
       revenue.value.textContent = formatMoney(result.revenue + tips);
-      if (result.play?.fullCombo || (result.mode === 'play' && !result.ignored && result.P >= 0.85)) applause();
+      if (result.play?.fullCombo || (result.mode !== 'passive' && !result.ignored && result.P >= 0.85)) applause();
       ui.resultFinished();
       next.focus();
     }

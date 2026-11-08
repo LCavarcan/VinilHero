@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { emptyCache, loadRecords, playId, readPlays, watchFretshift } from '../src/bridge/fretshiftFiles.js';
-import { findFretshiftDir, isFretshiftDir } from '../src/bridge/fretshiftPaths.js';
+import { emptyCache, loadRecords, playId, readParties, readPlays, watchFretshift } from '../src/bridge/fretshiftFiles.js';
+import { findFretshiftDir, findFretshiftExe, isFretshiftDir, openSongArgs } from '../src/bridge/fretshiftPaths.js';
 import { loadFixture, makeFretshiftDir } from './helpers.js';
 
 // partida antiga, sem id
@@ -167,4 +167,32 @@ test('disco novo na biblioteca dispara onLibrary', async (t) => {
   assert.notEqual(await call.promise, Symbol.for('timeout'), 'onLibrary não foi chamado');
   const { records } = await loadRecords(dir, emptyCache());
   assert.equal(records.length, 2);
+});
+
+test('party.json: sem arquivo devolve []; gravar por .tmp + renomear dispara onParties', async (t) => {
+  const dir = makeFretshiftDir(t);
+  assert.deepEqual(await readParties(dir), []);
+  const call = nextCall();
+  const stop = watchFretshift(dir, { onParties: call.fn, onError: (e) => assert.fail(e) });
+  t.after(stop);
+  const party = { id: 'u1', songId: 'abc', playedAt: '2026-11-08T10:00:00.000Z', players: [{ slot: 0, instrument: 'guitar' }] };
+  const file = path.join(dir, 'party.json');
+  fs.writeFileSync(`${file}.tmp`, JSON.stringify({ parties: [party, { id: 'sem-jogadores', songId: 'abc' }] }));
+  fs.renameSync(`${file}.tmp`, file);
+  const result = await call.promise;
+  assert.notEqual(result, Symbol.for('timeout'), 'onParties não foi chamado');
+  assert.deepEqual(result[0].map((p) => p.id), ['u1']);
+});
+
+test('Tocar no Fretshift: acha o executável e só monta argumentos com id hexadecimal', (t) => {
+  const base = makeFretshiftDir(t, { songs: [] });
+  assert.equal(findFretshiftExe({}, { localAppData: base }), null);
+  const exe = path.join(base, 'Programs', 'Fretshift', 'Fretshift.exe');
+  fs.mkdirSync(path.dirname(exe), { recursive: true });
+  fs.writeFileSync(exe, '');
+  assert.equal(findFretshiftExe({}, { localAppData: base }), exe);
+  assert.equal(findFretshiftExe({ fretshiftExe: path.join(base, 'nao.exe') }, { localAppData: base }), exe);
+  assert.deepEqual(openSongArgs('8f0fab12'), ['--open-song', '8f0fab12']);
+  assert.equal(openSongArgs('--x'), null);
+  assert.equal(openSongArgs('8f0f ab'), null);
 });

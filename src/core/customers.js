@@ -11,6 +11,8 @@ export const ALL_ARCHETYPES = Object.keys(A);
 
 /** Ajuste de dificuldade: Fácil e Expert usam o fator da tabela; Difícil, metade do ajuste do Expert. */
 function difficultyFactor(archetype, difficulty) {
+  // show da banda: cada pessoa ajusta a mistura; vale a média dos ajustes
+  if (Array.isArray(difficulty)) return difficulty.reduce((s, d) => s + difficultyFactor(archetype, d), 0) / difficulty.length;
   if (difficulty === 'Easy') return archetype.easy ?? 1;
   if (difficulty === 'Expert') return archetype.expert ?? 1;
   if (difficulty === 'Hard') return 1 + ((archetype.expert ?? 1) - 1) / 2;
@@ -18,7 +20,7 @@ function difficultyFactor(archetype, difficulty) {
 }
 
 /**
- * Pesos por arquétipo.
+ * Pesos por arquétipo. `difficulty`: uma dificuldade, ou a lista das dificuldades da banda (show).
  * - `criticToday`: já veio um crítico hoje (no máximo 1 por dia)
  * - `booth`: tem cabine de audição (karaokeiro ×1,5)
  * - `karaokeNight`: é a Noite de karaokê (karaokeiro ×3)

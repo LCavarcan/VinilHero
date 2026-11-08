@@ -20,3 +20,19 @@ export function findFretshiftDir(settings = {}, { appData = process.env.APPDATA 
   if (isFretshiftDir(fallback)) return { dir: fallback, source: 'default' };
   return null;
 }
+
+/**
+ * O executável do Fretshift, para o botão "Tocar no Fretshift": a configuração `fretshiftExe`, senão
+ * o local padrão do instalador (`%LOCALAPPDATA%\Programs\Fretshift\Fretshift.exe`). Devolve o
+ * caminho, ou null se não existir.
+ */
+export function findFretshiftExe(settings = {}, { localAppData = process.env.LOCALAPPDATA } = {}) {
+  const candidates = [settings.fretshiftExe, localAppData && path.join(localAppData, 'Programs', 'Fretshift', 'Fretshift.exe')];
+  return candidates.find((p) => p && /\.exe$/i.test(p) && fs.existsSync(p)) ?? null;
+}
+
+/** Argumentos para abrir uma música no Fretshift; só ids hexadecimais (o mesmo que o Fretshift aceita). */
+export function openSongArgs(songId) {
+  if (typeof songId !== 'string' || !/^[0-9a-f]{6,64}$/.test(songId)) return null;
+  return ['--open-song', songId];
+}

@@ -107,8 +107,8 @@ prateleira. Se voltar, volta com o histórico.
 | Chave | Padrão | Significado |
 |---|---|---|
 | `fretshiftDir` | — | pasta de dados do Fretshift, se não for a padrão |
-| `fretshiftExe` | — | executável do Fretshift (etapa 4) |
-| `bridgePort` | 47321 | porta da ponte ao vivo (etapa 4) |
+| `fretshiftExe` | — | executável do Fretshift para "Tocar no Fretshift"; sem ele, o local padrão do instalador (`%LOCALAPPDATA%\Programs\Fretshift\Fretshift.exe`). A tela de espera tem "Onde está o Fretshift?" |
+| `bridgePort` | 47321 | porta da ponte ao vivo (a mesma do `vinilHeroPort` do Fretshift). Ocupada por outro programa: o jogo segue sem a cena ao vivo |
 | `volume` / `sfxVolume` | 0,7 / 0,6 | música ambiente / efeitos |
 | `animationSpeed` | 1 | velocidade da cena de resultado (1×, 2×, pular) |
 
@@ -125,6 +125,8 @@ O que o processo principal manda para a janela (`day:result`). A janela só dese
   "songId": "8f0f…",
   "mode": "play",
   "play": { "instrument": "drums", "difficulty": "Expert", "stars": 4, "accuracy": 0.91 },
+  "band": null,
+  "fromLive": true,
   "P": 0.71,
   "event": "rain",
   "E": 0.7,
@@ -149,6 +151,11 @@ O que o processo principal manda para a janela (`day:result`). A janela só dese
   "live": null
 }
 ```
+
+- `mode`: `play`, `passive` ou `show` (show da banda). No show, `band` traz `{ E, weak, players: [{ instrument, difficulty, stars, P }] }` e `play` é quem representa a banda (a dificuldade mais alta).
+- `fromLive`: a cena "ao vivo" já mostrou a música; a cena de resultado começa com todo mundo dentro da loja.
+- `pending.mode` no save também pode ser `show`; o `playId` da apresentação de um show é o `id` da entrada do `party.json`.
+
 
 Os nomes no código e nos dados são em inglês (`curious`, `collector`, `afternoon`); os textos da tela
 são em português e ficam em `src/renderer/text.js`.

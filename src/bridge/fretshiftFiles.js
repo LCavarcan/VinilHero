@@ -70,16 +70,29 @@ export function playId(play) {
  * SyntaxError (quem observa tenta de novo).
  */
 export async function readPlays(dir) {
+  const plays = await readList(dir, 'scores.json', 'plays');
+  return plays.filter((p) => p && p.songId).map((p) => ({ ...p, id: playId(p) }));
+}
+
+/**
+ * Partidas do "Jogar juntos" (party.json, gravado pelo Fretshift desde a integração com o VinilHero).
+ * Sem arquivo (Fretshift antigo), devolve []. Só entradas com id, disco e jogadores.
+ */
+export async function readParties(dir) {
+  const parties = await readList(dir, 'party.json', 'parties');
+  return parties.filter((p) => p && typeof p.id === 'string' && p.songId && Array.isArray(p.players));
+}
+
+async function readList(dir, file, key) {
   let text;
   try {
-    text = await fsp.readFile(path.join(dir, 'scores.json'), 'utf8');
+    text = await fsp.readFile(path.join(dir, file), 'utf8');
   } catch (err) {
     if (err.code === 'ENOENT') return [];
     throw err;
   }
   const data = JSON.parse(text);
-  const plays = Array.isArray(data?.plays) ? data.plays : [];
-  return plays.filter((p) => p && p.songId).map((p) => ({ ...p, id: playId(p) }));
+  return Array.isArray(data?.[key]) ? data[key] : [];
 }
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -87,22 +100,26 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 /**
  * Observa a pasta do Fretshift (a pasta, não o arquivo: o scores.json é trocado por renomeação).
  * - `onPlays(plays)`: o scores.json mudou; recebe todas as partidas.
+ * - `onParties(parties)`: o party.json mudou (partidas em grupo, para o show da banda).
  * - `onLibrary()`: um disco entrou, saiu ou mudou na biblioteca.
  * - `onError(err)`: leitura falhou depois das novas tentativas, ou a observação caiu.
  * Devolve `stop()`.
  */
 export function watchFretshift(
   dir,
-  { onPlays = () => {}, onLibrary = () => {}, onError = () => {}, debounceMs = 300, retryMs = 200, retries = 3 } = {},
+  { onPlays = () => {}, onParties = () => {}, onLibrary = () => {}, onError = () => {}, debounceMs = 300, retryMs = 200, retries = 3 } = {},
 ) {
   const timers = {};
   let stopped = false;
 
-  async function emitPlays() {
+  const emitPlays = () => emit(readPlays, onPlays);
+  const emitParties = () => emit(readParties, onParties);
+
+  async function emit(read, callback) {
     for (let attempt = 0; ; attempt++) {
       try {
-        const plays = await readPlays(dir);
-        if (!stopped) onPlays(plays);
+        const list = await read(dir);
+        if (!stopped) callback(list);
         return;
       } catch (err) {
         if (stopped) return;
@@ -123,6 +140,7 @@ export function watchFretshift(
     if (!filename) return;
     const parts = filename.split(/[\\/]/);
     if (parts.length === 1 && parts[0] === 'scores.json') schedule('plays', emitPlays);
+    else if (parts.length === 1 && parts[0] === 'party.json') schedule('parties', emitParties);
     // library/, library/<id>/, library/<id>/song.json ou cover.*; o áudio e os .tmp não interessam
     else if (parts[0] === 'library' && (parts.length <= 2 || /^(song\.json|cover\.[a-z]+)$/i.test(parts[2])))
       schedule('library', onLibrary);

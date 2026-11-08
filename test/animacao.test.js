@@ -1,3 +1,4 @@
+import { MAX_CROWD, createCrowd, crowdTarget, stepCrowd } from '../src/renderer/scene/aovivo.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { COUNTER_X, DOOR_X, actorAt, buildTimeline, countersAt } from '../src/renderer/scene/animacao.js';
@@ -65,4 +66,30 @@ test('vendas sozinhas e segundo disco: contadores batem com vendas e faturamento
   assert.equal(tl.actors[0].balloon.icon, 'buy');
   const b = tl.actors[0].balloon;
   assert.ok(b.t1 > b.t0);
+});
+
+test('ao vivo: a plateia cresce com o combo e alguém desiste com 3 erros seguidos', () => {
+  assert.equal(crowdTarget({ combo: 0 }), 1);
+  assert.equal(crowdTarget({ combo: 37 }), 4);
+  assert.equal(crowdTarget({ combo: 37, starPower: true }), 6);
+  assert.equal(crowdTarget({ combo: 500 }), MAX_CROWD);
+
+  const crowd = createCrowd();
+  let t = 0;
+  const run = (data, seconds) => {
+    let left = 0;
+    for (let i = 0; i < seconds * 10; i++) {
+      t += 0.1;
+      left += stepCrowd(crowd, data, t, 0.1).left;
+    }
+    return left;
+  };
+  run({ combo: 40, misses: 0 }, 5);
+  assert.equal(crowd.actors.length, 5, 'combo 40 → 5 pessoas');
+  assert.ok(crowd.actors.every((a) => !a.moving), 'todo mundo chegou no lugar');
+  // 1 erro não basta; 3 em 2 s fazem uma pessoa sair (e ela some depois de passar pela porta)
+  assert.equal(run({ combo: 0, misses: 1 }, 0.1), 0);
+  assert.equal(run({ combo: 0, misses: 4 }, 0.1), 1);
+  run({ combo: 0, misses: 4 }, 3);
+  assert.ok(crowd.actors.filter((a) => !a.leaving).length <= 4);
 });

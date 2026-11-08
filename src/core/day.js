@@ -71,7 +71,9 @@ export function openDay(state, { library = [] } = {}) {
 export function choose(state, { songId, mode, now }) {
   if (!isOpen(state)) throw new GameError('dayClosed');
   if (state.pending) throw new GameError('alreadyWaiting');
-  if (mode !== 'play' && mode !== 'passive') throw new GameError('unknownMode');
+  if (mode !== 'play' && mode !== 'passive' && mode !== 'show') throw new GameError('unknownMode');
+  // show da banda: precisa do palco
+  if (mode === 'show' && !(state.upgrades.stage > 0)) throw new GameError('noStage');
   const entry = state.records[songId];
   if (!entry || !entry.section || entry.section === STORAGE) throw new GameError('notOnShelf');
   return { ...state, pending: { songId, mode, period: state.day.period, since: now } };

@@ -5,7 +5,8 @@ import { randomInt } from 'node:crypto';
 import { BALANCE } from '../core/balance.js';
 import { cancel, choose, closeDay, openDay, prepareDay, titleOf } from '../core/day.js';
 import { buy, rent, upgradeOptions } from '../core/economy.js';
-import { importHistory, processPlays, resolvePassive } from '../core/plays.js';
+import { applyLiveEvents, liveForPresentation } from '../core/live.js';
+import { importHistory, processParties, processPlays, resolvePassive } from '../core/plays.js';
 import { isOpenRequest, recordMatches } from '../core/requests.js';
 import { newSave } from '../core/saveFormat.js';
 import { moveRecord, shelfRecords, shelfView, syncLibrary } from '../core/shelves.js';
@@ -19,6 +20,8 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
   let unseen = [];
   let notices = [];
   let lastSummary = null;
+  // ponte ao vivo: a partida do disco pendente acontecendo agora no Fretshift (só na memória)
+  let live = null;
 
   const persist = () => writeSave(file, state);
   const findRecord = (id) => library.find((r) => r.id === id);
@@ -35,18 +38,30 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
   }
 
   function applyPlays(plays) {
-    const out = processPlays(state, plays, library);
+    return applyOutcome(processPlays(state, plays, library, { live: liveForPresentation(live, state.pending) }));
+  }
+
+  /** Partidas do "Jogar juntos": resolvem o show da banda pendente. */
+  function applyParties(parties) {
+    return applyOutcome(processParties(state, parties, library, { live: liveForPresentation(live, state.pending) }));
+  }
+
+  function applyOutcome(out) {
     if (out.state === state) return [];
     state = out.state;
+    // a cena "ao vivo" já mostrou a música: o resultado não anima de novo quem já entrou
+    const fromLive = !!live?.ended;
+    // a apresentação foi resolvida: o "ao vivo" dela acabou
+    if (out.results.length) live = null;
     // o resultado decorado usa a loja depois de cada apresentação; com várias de uma vez, a última vale
-    const decorated = out.results.map(decorate);
+    const decorated = out.results.map((r) => ({ ...decorate(r), fromLive }));
     unseen.push(...decorated);
     persist();
     return decorated;
   }
 
   /** Abre (ou cria) a loja com a biblioteca e as partidas do Fretshift. */
-  function start(summaries, plays) {
+  function start(summaries, plays, parties = []) {
     library = summaries;
     const read = readSave(file);
     if (read.broken) notices.push({ code: 'saveBroken', file: read.broken, error: read.error });
@@ -61,6 +76,7 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
     } else {
       // partidas gravadas com o VinilHero fechado: resolvem a apresentação pendente
       applyPlays(plays);
+      applyParties(parties);
       persist();
     }
     return view();
@@ -114,7 +130,10 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
       return !!state;
     },
     get waitingForPlay() {
-      return state?.pending?.mode === 'play';
+      return state?.pending?.mode === 'play' || state?.pending?.mode === 'show';
+    },
+    get live() {
+      return live;
     },
     get state() {
       return state;
@@ -127,8 +146,18 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
     onPlays(plays) {
       return state ? applyPlays(plays) : [];
     },
+    onParties(parties) {
+      return state ? applyParties(parties) : [];
+    },
+    /** Eventos da ponte ao vivo; devolve o estado "ao vivo" (null = nada acontecendo). */
+    onLive(events) {
+      if (!state) return null;
+      live = applyLiveEvents(live, events, state.pending);
+      return live;
+    },
     choose({ songId, mode }) {
       state = choose(state, { songId, mode, now: now() });
+      live = null;
       if (mode === 'passive') {
         const { state: next, result } = resolvePassive(state, library);
         state = next;
@@ -137,7 +166,10 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
       persist();
       return view();
     },
-    cancel: () => change(cancel),
+    cancel() {
+      live = null;
+      return change(cancel);
+    },
     closeDay() {
       const out = closeDay(state);
       state = out.state;

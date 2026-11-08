@@ -4,7 +4,7 @@
 import { BALANCE } from './balance.js';
 import { customerMix, drawVisitors } from './customers.js';
 import { eventFactor, isKaraokeNight } from './events.js';
-import { PASSIVE_P, performanceOf } from './performance.js';
+import { PASSIVE_P, performanceOf, performanceOfBand } from './performance.js';
 import { fulfilled, gaveUp, isOpenRequest, missReason } from './requests.js';
 import { between } from './rng.js';
 
@@ -19,7 +19,10 @@ const REP = BALANCE.reputation;
 export function visitorCount({ P, difficulty, reputation, repetition = 0, period, sound = 0, event = 1, baseBonus = 0 }) {
   const B = V.base + reputation / V.reputationDivisor + baseBonus;
   const perf = V.performanceMin + V.performanceSlope * P;
-  const D = V.difficulty[difficulty] ?? 1;
+  // show da banda: `difficulty` é a lista das dificuldades; vale a média dos fatores
+  const D = Array.isArray(difficulty)
+    ? difficulty.reduce((s, d) => s + (V.difficulty[d] ?? 1), 0) / difficulty.length
+    : (V.difficulty[difficulty] ?? 1);
   const R = V.repetition[Math.min(repetition, V.repetition.length - 1)];
   const T = V.period[period] ?? 1;
   const S = V.sound[sound] ?? 1;
@@ -44,20 +47,23 @@ export function reputationDelta({ P, mode, critic = false, fullCombo = false, re
 
 const isHardOrExpert = (d) => d === 'Hard' || d === 'Expert';
 
-/** Afinidade do visitante com a apresentação (1,4 / 1 / 0,6; músico fraco: 0). */
-function affinity(visitor, { record, play, P, difficulty }) {
+/**
+ * Afinidade do visitante com a apresentação (1,4 / 1 / 0,6; músico fraco: 0). `instruments` e
+ * `difficulties`: de quem tocou (no show da banda, todos).
+ */
+function affinity(visitor, { record, play, P, instruments, difficulties }) {
   const { affinityHigh: HIGH, affinityLow: LOW } = BUY;
   switch (visitor.archetype) {
     case 'sectionFan':
       return record.section === visitor.section ? HIGH : LOW;
     case 'musician':
       if (P < BUY.musicianMinP || !play) return 0;
-      return play.instrument === visitor.instrument ? HIGH : LOW;
+      return instruments.includes(visitor.instrument) ? HIGH : LOW;
     case 'collector':
-      if (isHardOrExpert(difficulty) || record.mastered) return HIGH;
-      return difficulty === 'Easy' ? LOW : 1;
+      if (difficulties.some(isHardOrExpert) || record.mastered) return HIGH;
+      return difficulties.length && difficulties.every((d) => d === 'Easy') ? LOW : 1;
     case 'karaoke':
-      if (play?.instrument === 'vocals') return HIGH;
+      if (instruments.includes('vocals')) return HIGH;
       return record.tags?.includes('cantavel') ? 1 : LOW;
     default:
       return 1;
@@ -72,7 +78,8 @@ function affinity(visitor, { record, play, P, difficulty }) {
  * - `shelfRecords`: todos os discos nas prateleiras (vendas sozinhas dos discos dominados)
  * - `sections`: seções com discos (para os fãs de seção)
  * - `play`: a partida do Fretshift, ou null em "só pôr pra tocar"
- * - `mode`: 'play' | 'passive'
+ * - `band`: no show, a entrada do party.json (a banda); `play` fica sem uso
+ * - `mode`: 'play' | 'passive' | 'show'
  * - `rng`: sorteio com semente
  * - `live`: dados da ponte ao vivo (etapa 4), ou null
  */
@@ -83,6 +90,7 @@ export function resolvePresentation({
   shelfRecords = sectionRecords,
   sections = [record.section],
   play,
+  band = null,
   mode,
   rng,
   live = null,
@@ -91,20 +99,29 @@ export function resolvePresentation({
   const period = day.period;
   const event = day.event ?? null;
   const karaokeNight = isKaraokeNight(event, period);
-  const played = mode === 'play' && !!play;
+  // show da banda: cada pessoa é uma "partida"; a de dificuldade mais alta representa a banda
+  const show = mode === 'show' && !!band?.players?.length;
+  const bandPerf = show ? performanceOfBand(band) : null;
+  const plays = show ? band.players : play ? [play] : [];
+  if (show) play = leadOf(band.players);
+  const played = (mode === 'play' && !!play) || show;
   // na Noite de karaokê só partida de voz conta: as outras valem como "só pôr pra tocar"
-  const ignored = played && karaokeNight && play.instrument !== 'vocals';
+  const ignored = played && karaokeNight && !plays.some((p) => p.instrument === 'vocals');
   const passive = !played || ignored;
-  const P = passive ? PASSIVE_P : performanceOf(play);
+  const P = passive ? PASSIVE_P : show ? bandPerf.P : performanceOf(play);
   const difficulty = passive ? 'passive' : play.difficulty;
+  const difficulties = passive ? [] : plays.map((p) => p.difficulty);
+  const instruments = passive ? [] : plays.map((p) => p.instrument);
   const reputation = state.shop.reputation;
   const repetition = day.playedToday[record.id] ?? 0;
   const upgrades = state.upgrades;
 
-  const E = eventFactor(event, period, record);
+  const bandE = show && !passive ? bandPerf.E : 1;
+  const eventE = eventFactor(event, period, record);
+  const E = eventE * bandE;
   const count = visitorCount({
     P,
-    difficulty,
+    difficulty: show && !passive ? difficulties : difficulty,
     reputation,
     repetition,
     period,
@@ -113,7 +130,7 @@ export function resolvePresentation({
     baseBonus: upgrades.neon ? BALANCE.upgrades.neon.baseBonus : 0,
   });
   const mix = customerMix({
-    difficulty,
+    difficulty: show && !passive ? difficulties : difficulty,
     period,
     reputation,
     criticToday: !!day.criticSeen,
@@ -153,7 +170,7 @@ export function resolvePresentation({
   const windowFactor = BALANCE.upgrades.window.purchaseFactor[upgrades.window ?? 0] ?? 1;
   const liveBonus = Math.min(BALANCE.live.starPowerMaxBonus, (live?.starPowerCount ?? 0) * BALANCE.live.starPowerBonus);
   const cafe = (upgrades.cafe ?? 0) > 0;
-  const ctx = { record, play: passive ? null : play, P, difficulty };
+  const ctx = { record, play: passive ? null : play, P, instruments, difficulties };
 
   const visitors = drawn.map((v) => {
     const chance =
@@ -194,9 +211,11 @@ export function resolvePresentation({
 
   // pedidos do quadro
   const presentation = { mode: passive ? 'passive' : 'play', period, record, play: passive ? null : play, P };
+  // no show, o pedido é atendido se alguém da banda atende
+  const each = passive ? [presentation] : plays.map((p) => ({ ...presentation, play: p, P: show ? performanceOf(p) : P }));
   const openRequests = (day.requests ?? []).filter((r) => isOpenRequest(r, day.number));
-  const done = openRequests.filter((r) => fulfilled(r, presentation));
-  const failed = openRequests.filter((r) => gaveUp(r, presentation));
+  const done = openRequests.filter((r) => each.some((x) => fulfilled(r, x)));
+  const failed = openRequests.filter((r) => !done.includes(r) && each.every((x) => gaveUp(r, x)));
   const missed = openRequests
     .filter((r) => !done.includes(r) && !failed.includes(r))
     .map((r) => ({ id: r.id, ...missReason(r, presentation) }));
@@ -207,12 +226,12 @@ export function resolvePresentation({
     visitors.reduce((sum, v) => sum + v.price + (v.extraPrice ?? 0), 0) + soloSales.reduce((sum, x) => sum + x.price, 0);
   const sales = Object.values(stockUsed).reduce((a, b) => a + b, 0);
   const critic = visitors.some((v) => v.archetype === 'critic');
-  const fullCombo = !passive && !!play.fullCombo;
+  const fullCombo = !passive && plays.every((p) => !!p.fullCombo);
   const delta = reputationDelta({ P, mode: passive ? 'passive' : 'play', critic, fullCombo, requestBonus, reputation });
 
   return {
     songId: record.id,
-    mode: played ? 'play' : 'passive',
+    mode: !played ? 'passive' : show ? 'show' : 'play',
     ignored,
     period,
     event,
@@ -221,6 +240,13 @@ export function resolvePresentation({
       ? { instrument: play.instrument, difficulty: play.difficulty, stars: play.stars ?? 0, accuracy: play.accuracy ?? 0, fullCombo }
       : null,
     P,
+    band: show
+      ? {
+          E: bandPerf.E,
+          weak: bandPerf.weak,
+          players: bandPerf.players.map((p) => ({ instrument: p.instrument, difficulty: p.difficulty, stars: p.stars ?? 0, P: Math.round(p.P * 100) / 100 })),
+        }
+      : null,
     visitors,
     soloSales,
     sales,
@@ -244,15 +270,26 @@ export function resolvePresentation({
       fullCombo,
       record,
       event,
-      E,
+      E: eventE,
       soloSales,
+      instruments,
       done,
       failed,
       critic,
       delta,
+      band: show && !passive ? bandPerf : null,
     }),
     live,
   };
+}
+
+const DIFFICULTY_ORDER = ['Easy', 'Medium', 'Hard', 'Expert'];
+
+/** Quem representa a banda: a dificuldade mais alta, depois mais estrelas. */
+function leadOf(players) {
+  return [...players].sort(
+    (a, b) => DIFFICULTY_ORDER.indexOf(b.difficulty) - DIFFICULTY_ORDER.indexOf(a.difficulty) || (b.stars ?? 0) - (a.stars ?? 0),
+  )[0];
 }
 
 /** Frases de "por quê", como dados; o texto fica na janela (src/renderer/text.js). */
@@ -263,6 +300,7 @@ function reasonsFor(r) {
     visitors.filter((v) => v.archetype === archetype && (bought === undefined || !!v.bought === bought)).length;
 
   if (ignored) reasons.push({ code: 'karaokeIgnored', instrument: play.instrument });
+  if (r.band) reasons.push({ code: 'band', count: r.band.players.length, E: r.band.E, weak: r.band.weak });
   else if (passive) reasons.push({ code: 'passive' });
   if (event && E !== 1) reasons.push({ code: `event_${event}`, up: E > 1 });
   for (const q of r.done) reasons.push({ code: 'requestDone', request: q.id, kind: q.kind, tip: q.tip });
@@ -282,7 +320,7 @@ function reasonsFor(r) {
   const fans = visitors.filter((v) => v.archetype === 'sectionFan' && v.section === record.section).length;
   if (fans) reasons.push({ code: 'sectionFans', count: fans, section: record.section });
   const singers = count('karaoke', true);
-  if (singers && !passive && play.instrument === 'vocals') reasons.push({ code: 'singers', count: singers });
+  if (singers && !passive && r.instruments.includes('vocals')) reasons.push({ code: 'singers', count: singers });
 
   const noStock = visitors.filter((v) => v.noStock).length;
   if (noStock) reasons.push({ code: 'noStock', count: noStock });

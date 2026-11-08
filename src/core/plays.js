@@ -73,17 +73,19 @@ export function presentationSeed(state, { playId, songId }) {
   return playId ? seedFrom(state.seed, playId) : seedFrom(state.seed, state.day.number, state.day.period, songId);
 }
 
-function resolveAndSettle(state, { play, library, live }) {
+function resolveAndSettle(state, { play, band = null, library, live }) {
   const { songId, mode } = state.pending;
+  const playId = band?.id ?? play?.id ?? null;
   const result = resolvePresentation({
     state,
     ...presentationContext(state, songId, library),
     play,
+    band,
     mode,
-    rng: mulberry32(presentationSeed(state, { playId: play?.id, songId })),
+    rng: mulberry32(presentationSeed(state, { playId, songId })),
     live,
   });
-  return { state: settle(state, result, { playId: play?.id ?? null }), result };
+  return { state: settle(state, result, { playId }), result };
 }
 
 /** "Só pôr pra tocar": resolve a apresentação pendente na hora. */
@@ -113,4 +115,31 @@ export function processPlays(state, plays, library, { live = null } = {}) {
     processed.add(play.id);
   }
   return { state: { ...next, processedPlays: [...processed] }, results };
+}
+
+/**
+ * Partidas do "Jogar juntos" (party.json): a primeira do disco pendente em modo "Show", gravada
+ * depois da escolha, resolve a apresentação (o show da banda). Partidas em grupo não entram no
+ * histórico dos discos. Devolve `{ state, results }`.
+ */
+export function processParties(state, parties, library, { live = null } = {}) {
+  const pending = state.pending;
+  if (pending?.mode !== 'show') return { state, results: [] };
+  const processed = new Set(state.processedPlays);
+  const party = [...parties]
+    .sort(byPlayedAt)
+    .find(
+      (p) =>
+        !processed.has(p.id) &&
+        p.songId === pending.songId &&
+        time(p.playedAt) > time(pending.since) &&
+        Array.isArray(p.players) &&
+        p.players.length > 0,
+    );
+  if (!party) return { state, results: [] };
+  const resolved = resolveAndSettle(state, { play: null, band: party, library, live });
+  return {
+    state: { ...resolved.state, processedPlays: [...processed, party.id] },
+    results: [resolved.result],
+  };
 }

@@ -75,7 +75,7 @@ export const UPGRADES = {
   extraShelf: { name: 'Prateleira extra', effect: '+8 lugares numa seção. Discos no depósito não vendem.' },
   booth: { name: 'Cabine de audição', effect: 'Karaokeiros vêm 50% mais. Libera a Noite de karaokê.' },
   neon: { name: 'Letreiro neon', effect: 'A loja aparece de longe: +3 visitantes de base em toda apresentação.' },
-  stage: { name: 'Palco', effect: 'Um palco no meio da loja. O show da banda chega numa próxima versão.' },
+  stage: { name: 'Palco', effect: 'Libera o show da banda: tocar no "Jogar juntos" do Fretshift, com 2 a 4 pessoas.' },
   cafe: { name: 'Cafeteria', effect: 'Um café no balcão: 15% dos compradores levam um segundo disco.' },
 };
 
@@ -178,6 +178,10 @@ export function missText(r, miss) {
 }
 
 export const ERRORS = {
+  noStage: 'O show da banda precisa do palco (Melhorias).',
+  noExe: 'Não achei o Fretshift instalado. Na tela de espera, use "Onde está o Fretshift?".',
+  badSong: 'Esse disco não pode ser aberto no Fretshift.',
+  launchFailed: 'Não deu para abrir o Fretshift.',
   noGame: 'A loja ainda não abriu: falta encontrar o Fretshift.',
   dayClosed: 'O dia já acabou. Feche o dia para abrir o próximo.',
   alreadyWaiting: 'Já tem um disco esperando ser tocado.',
@@ -236,6 +240,10 @@ export function reasonText(r) {
   switch (r.code) {
     case 'passive':
       return 'Só pôr pra tocar: a loja teve o movimento de uma apresentação fraca.';
+    case 'band':
+      return r.weak
+        ? `Show com ${r.count} pessoas, mas alguém se perdeu e o público notou: movimento ×${oneDecimal.format(r.E)}.`
+        : `Show com ${r.count} pessoas: a loja lotou, movimento ×${oneDecimal.format(r.E)}.`;
     case 'karaokeIgnored':
       return `Noite de karaokê: ${INSTRUMENT_NAMES[r.instrument]?.toLowerCase() ?? 'o instrumento'} não conta, só a voz. Valeu como só pôr pra tocar.`;
     case 'event_rush':

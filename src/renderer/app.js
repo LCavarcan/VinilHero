@@ -4,6 +4,7 @@
 import { $, el, toast } from './dom.js';
 import * as acerto from './screens/acerto.js';
 import * as aguardando from './screens/aguardando.js';
+import * as aovivo from './screens/aovivo.js';
 import * as escolha from './screens/escolha.js';
 import * as estoque from './screens/estoque.js';
 import * as melhorias from './screens/melhorias.js';
@@ -21,6 +22,11 @@ import {
 
 let state = null;
 let status = null;
+// a partida do disco pendente acontecendo agora no Fretshift (ponte ao vivo), ou null
+let live = null;
+// a escolha (pending.since) a que o "ao vivo" pertence: escolher de novo começa sem cena
+let liveFor = null;
+const liveNow = () => (live && state?.pending && liveFor === state.pending.since ? live : null);
 // telas que a jogadora abriu por cima do fluxo do dia
 let overlay = null; // 'upgrades' | 'stock' | 'stats' | null
 // resultados esperando para serem mostrados, um de cada vez
@@ -31,6 +37,26 @@ let current = null; // { screen, cleanup }
 let hudOverride = null;
 
 const ui = {
+  live: () => liveNow(),
+  status: () => status,
+  /** Abre o Fretshift na música; avisa se não achar o executável. */
+  async launch(songId) {
+    const res = await window.api.fretshift.launch({ songId });
+    if (!res.ok) toast(ERRORS[res.error] ?? res.message ?? ERRORS.unexpected, 'error', 7000);
+    return res.ok;
+  },
+  /** Escolhe o disco e, se der, já abre o Fretshift nele. */
+  async playInFretshift(songId, mode = 'play') {
+    const ok = await ui.act(window.api.day.choose({ songId, mode }));
+    if (ok && status?.canLaunch) await ui.launch(songId);
+  },
+  async pickExe() {
+    const res = await window.api.fretshift.pickExe();
+    if (res.ok) {
+      status = res.status;
+      route();
+    }
+  },
   /** Chama uma ação do processo principal e atualiza a tela. */
   async act(call) {
     const res = await call;
@@ -114,7 +140,7 @@ function pick() {
   if (!state) return null;
   if (showingResult || results.length) return 'result';
   if (overlay) return overlay;
-  if (state.pending?.mode === 'play') return 'waiting';
+  if (state.pending?.mode === 'play' || state.pending?.mode === 'show') return liveNow() ? 'live' : 'waiting';
   if (['morning', 'afternoon', 'night'].includes(state.day.period)) return 'choose';
   return 'close';
 }
@@ -122,6 +148,7 @@ function pick() {
 const SCREENS = {
   choose: escolha,
   waiting: aguardando,
+  live: aovivo,
   result: resultado,
   close: acerto,
   upgrades: melhorias,
@@ -162,6 +189,8 @@ function route() {
     }
     return;
   }
+  // a cena ao vivo se atualiza sozinha (ui.live()); só é desenhada de novo se mudar de tela
+  if (name === 'live' && current?.name === 'live') return;
   // as outras telas são redesenhadas a cada mudança de estado
   current?.cleanup?.();
   current = { name, cleanup: SCREENS[name].render($('screen'), state, ui) };
@@ -186,6 +215,12 @@ window.api.fretshift.onStatus((s) => {
   renderStatus();
 });
 window.api.state.onChange((s) => setState(s));
+window.api.live.onUpdate((next) => {
+  const before = pick();
+  live = next;
+  liveFor = state?.pending?.since ?? null;
+  if (pick() !== before) route();
+});
 
 // atualização automática (só no app instalado): versão nova baixada → um clique reinicia e instala
 function showUpdate(info) {

@@ -2,11 +2,13 @@
 // (game.js, que usa as regras do core/) e o save.
 
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session } from 'electron';
+import { spawn } from 'node:child_process';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { emptyCache, loadRecords, readPlays, watchFretshift } from '../bridge/fretshiftFiles.js';
-import { findFretshiftDir, isFretshiftDir } from '../bridge/fretshiftPaths.js';
+import { emptyCache, loadRecords, readParties, readPlays, watchFretshift } from '../bridge/fretshiftFiles.js';
+import { findFretshiftDir, findFretshiftExe, isFretshiftDir, openSongArgs } from '../bridge/fretshiftPaths.js';
+import { DEFAULT_PORT, startLiveServer } from '../bridge/liveServer.js';
 import { createGame } from './game.js';
 import { createStore } from './store.js';
 import { startUpdater } from './updater.js';
@@ -17,7 +19,13 @@ const dataFile = (name) => path.join(app.getPath('userData'), name);
 // enquanto aguarda uma partida, relê o scores.json de tempos em tempos (o fs.watch pode perder eventos)
 const POLL_MS = 5000;
 
-const settings = createStore(() => dataFile('settings.json'), { fretshiftDir: null });
+const settings = createStore(() => dataFile('settings.json'), {
+  fretshiftDir: null,
+  // executável do Fretshift para "Tocar no Fretshift" (null = local padrão do instalador)
+  fretshiftExe: null,
+  // porta da ponte ao vivo (a mesma da configuração vinilHeroPort do Fretshift)
+  bridgePort: DEFAULT_PORT,
+});
 const recordsCache = createStore(() => dataFile('records-cache.json'), emptyCache());
 
 // vinilhero://cover/<id> serve a capa de um disco da biblioteca do Fretshift
@@ -27,6 +35,8 @@ const fretshift = { dir: null, source: null, records: 0, lastReadAt: null, error
 let game = null;
 let win;
 let pollTimer = null;
+// servidor da ponte ao vivo: { port } ligado, { error } se a porta estiver ocupada
+const liveBridge = { port: null, error: null, close: null };
 
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
@@ -40,6 +50,8 @@ function status() {
     records: fretshift.records,
     lastReadAt: fretshift.lastReadAt,
     error: fretshift.error,
+    live: { port: liveBridge.port, error: liveBridge.error },
+    canLaunch: !!findFretshiftExe(settings.get()),
   };
 }
 
@@ -61,13 +73,36 @@ function handlePlays(plays) {
   if (results.length) pushState();
 }
 
+function handleParties(parties) {
+  const results = game?.onParties(parties) ?? [];
+  if (results.length) pushState();
+}
+
 async function pollWhileWaiting() {
   if (!game?.waitingForPlay || !fretshift.dir) return;
   try {
     handlePlays(await readPlays(fretshift.dir));
+    handleParties(await readParties(fretshift.dir));
   } catch {
     // JSON incompleto ou arquivo em uso: a próxima rodada tenta de novo
   }
+}
+
+/** Eventos da ponte ao vivo: atualizam a cena "ao vivo" da janela. */
+function handleLive(events) {
+  if (!game) return;
+  send('live:update', game.onLive(events));
+}
+
+async function startLive() {
+  try {
+    const server = await startLiveServer({ port: Number(settings.get().bridgePort) || DEFAULT_PORT, onEvents: handleLive });
+    Object.assign(liveBridge, { port: server.port, error: null, close: server.close });
+  } catch (err) {
+    // porta ocupada (outro programa): o jogo segue sem a ponte, só sem a cena ao vivo
+    Object.assign(liveBridge, { port: null, error: err.code ?? err.message, close: null });
+  }
+  pushStatus();
 }
 
 async function connect() {
@@ -83,8 +118,9 @@ async function connect() {
   try {
     const library = await readLibrary();
     const plays = await readPlays(fretshift.dir);
+    const parties = await readParties(fretshift.dir).catch(() => []);
     game = createGame({ file: dataFile('save.json') });
-    game.start(library, plays);
+    game.start(library, plays, parties);
   } catch (err) {
     fretshift.error = `Não deu para abrir a loja: ${err.message}`;
     game = null;
@@ -94,6 +130,7 @@ async function connect() {
   try {
     fretshift.stopWatching = watchFretshift(fretshift.dir, {
       onPlays: handlePlays,
+      onParties: handleParties,
       onLibrary: async () => {
         try {
           game.setLibrary(await readLibrary());
@@ -168,6 +205,34 @@ gameAction('record:move', ({ songId, section }) => game.moveRecord({ songId, sec
 gameAction('stock:restock', ({ songId, copies }) => game.restock({ songId, copies }));
 gameAction('stock:auto', ({ auto }) => game.setAutoRestock({ auto }));
 gameAction('stock:top-up', () => game.topUp());
+// "Tocar no Fretshift": abre o Fretshift direto na música (ele aceita --open-song desde a 0.2.0)
+ipcMain.handle('fretshift:launch', (_e, { songId } = {}) => launchFretshift(songId));
+ipcMain.handle('fretshift:pick-exe', async () => {
+  const result = await dialog.showOpenDialog(win, {
+    title: 'Onde está o Fretshift.exe?',
+    properties: ['openFile'],
+    filters: [{ name: 'Fretshift', extensions: ['exe'] }],
+  });
+  if (result.canceled || !result.filePaths[0]) return { ok: false, canceled: true };
+  settings.set({ fretshiftExe: result.filePaths[0] });
+  return { ok: true, status: status() };
+});
+
+function launchFretshift(songId) {
+  const exe = findFretshiftExe(settings.get());
+  if (!exe) return { ok: false, error: 'noExe' };
+  const args = openSongArgs(songId);
+  if (!args) return { ok: false, error: 'badSong' };
+  try {
+    const child = spawn(exe, args, { detached: true, stdio: 'ignore' });
+    child.on('error', () => {});
+    child.unref();
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: 'launchFailed', message: err.message };
+  }
+}
+
 ipcMain.handle('fretshift:pick-dir', async () => {
   const result = await dialog.showOpenDialog(win, {
     title: 'Escolha a pasta de dados do Fretshift',
@@ -199,12 +264,14 @@ if (!app.requestSingleInstanceLock()) {
     await connect();
     pollTimer = setInterval(pollWhileWaiting, POLL_MS);
     createWindow();
+    startLive();
     startUpdater(() => win);
   });
 
   app.on('window-all-closed', () => {
     clearInterval(pollTimer);
     fretshift.stopWatching?.();
+    liveBridge.close?.();
     app.quit();
   });
 }

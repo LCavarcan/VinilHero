@@ -221,12 +221,20 @@ function panel(state, ui) {
   const best = Object.entries(record.best ?? {});
   const stored = record.section === 'storage';
   const serves = state.day.requests.filter((r) => r.open && r.matches.includes(record.id));
+  const canLaunch = !!ui.status()?.canLaunch;
   const actions = el(
     'div',
     'actions',
-    button('Tocar no Fretshift', 'primary big', () => ui.act(window.api.day.choose({ songId: record.id, mode: 'play' })), {
+    button('Tocar no Fretshift', 'primary big', () => ui.playInFretshift(record.id), {
       disabled: stored,
+      title: canLaunch ? 'Escolhe o disco e abre o Fretshift nele' : 'Escolhe o disco; depois toque no Fretshift',
     }),
+    state.upgrades.stage > 0
+      ? button('Show da banda', 'secondary', () => ui.playInFretshift(record.id, 'show'), {
+          disabled: stored,
+          title: 'Toque no "Jogar juntos" do Fretshift, com 2 a 4 pessoas: +25% de movimento por pessoa a mais',
+        })
+      : null,
     button('Só pôr pra tocar', 'ghost', () => ui.act(window.api.day.choose({ songId: record.id, mode: 'passive' })), {
       disabled: stored,
       title: 'A loja recebe o movimento de uma apresentação fraca, sem mudar a reputação.',
