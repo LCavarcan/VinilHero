@@ -1,0 +1,35 @@
+name: Versão
+
+# uma tag v0.2.0 gera o instalador e publica o Release neste repositório, de onde o VinilHero
+# instalado baixa as atualizações (ver src/main/updater.js)
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Tag igual à versão do package.json
+        shell: bash
+        run: test "${GITHUB_REF_NAME}" = "v$(node -p "require('./package.json').version")"
+      - run: npm ci
+      - run: npm test
+      - run: npx electron-builder --win --publish never
+      # o gh sobe o instalador e o latest.yml, que o atualizador lê para saber da versão nova
+      - name: Publicar o Release
+        shell: bash
+        run: >
+          gh release create "$GITHUB_REF_NAME" --verify-tag
+          --title "VinilHero ${GITHUB_REF_NAME#v}" --notes "Instalador: VinilHero-Setup-${GITHUB_REF_NAME#v}.exe"
+          dist/VinilHero-Setup-*.exe dist/VinilHero-Setup-*.exe.blockmap dist/latest.yml
+        env:
+          GH_TOKEN: ${{ github.token }}

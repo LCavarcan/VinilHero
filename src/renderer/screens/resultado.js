@@ -12,8 +12,10 @@ import {
   TITLE_NAMES,
   formatDelta,
   formatMoney,
+  missText,
   playLine,
   reasonText,
+  requestText,
 } from '../text.js';
 
 /** Como a loja aparece na cena: melhorias, evento do dia, discos dominados e a moldura de Lendária. */
@@ -25,6 +27,23 @@ function shopLook(state, result) {
     mastered: shelf.filter((r) => r.mastered).length,
     legendary: result.shop.title === 'legendary',
   };
+}
+
+/**
+ * O quadro de pedidos depois da cena: os atendidos com a gorjeta, os outros com o motivo.
+ * Os pedidos vêm do quadro do dia (`state.day.requests`), pelo id.
+ */
+function requestsBox(result, state) {
+  const byId = new Map((state.day?.requests ?? []).map((q) => [q.id, q]));
+  const row = (cls, mark, q, detail) =>
+    el('li', cls, el('span', 'mark', mark), el('span', null, el('strong', null, requestText(q)), ` · ${detail}`));
+  const items = [
+    ...(result.requestsDone ?? []).map((id) => byId.get(id) && row('done', '✓', byId.get(id), `pedido atendido! +${formatMoney(byId.get(id).tip)}`)),
+    ...(result.requestsFailed ?? []).map((id) => byId.get(id) && row('failed', '✗', byId.get(id), 'o cliente exigente não gostou e foi embora')),
+    ...(result.requestsMissed ?? []).map((m) => byId.get(m.id) && row('missed', '·', byId.get(m.id), missText(byId.get(m.id), m))),
+  ].filter(Boolean);
+  if (!items.length) return null;
+  return el('div', 'result-requests hidden', el('p', 'label', 'Pedidos do quadro'), el('ul', null, ...items));
 }
 
 const SPEED_KEY = 'vinilhero.speed';
@@ -47,12 +66,15 @@ export function render(root, result, state, ui) {
   const sales = counter('Compras');
   const revenue = counter('Faturamento');
   const reputation = counter('Reputação');
-  const reasons = el('ul', 'reasons hidden', ...result.reasons.map(reasonText).filter(Boolean).map((t) => el('li', null, t)));
+  // os pedidos têm o quadro próprio logo abaixo
+  const shownReasons = result.reasons.filter((x) => x.code !== 'requestDone' && x.code !== 'requestFailed');
+  const reasons = el('ul', 'reasons hidden', ...shownReasons.map(reasonText).filter(Boolean).map((t) => el('li', null, t)));
   const titleUp = result.shop.title !== result.titleBefore ? el('p', 'title-up hidden', `A loja agora é: ${TITLE_NAMES[result.shop.title]}!`) : null;
 
   const subtitle = result.mode === 'passive' ? 'Só pôs o disco pra tocar' : playLine(result.play, result.P);
   const tips = result.tips ?? 0;
   const tipsLine = tips ? el('p', 'tips hidden', `Inclui ${formatMoney(tips)} de gorjeta dos pedidos atendidos.`) : null;
+  const requests = requestsBox(result, state);
   const look = shopLook(state, result);
   const event = EVENTS[result.event];
   const speedButtons = [1, 2].map((s) => {
@@ -96,6 +118,7 @@ export function render(root, result, state, ui) {
       tipsLine,
       titleUp,
       reasons,
+      requests,
       el('div', 'actions row', next),
     ),
   );
@@ -146,6 +169,7 @@ export function render(root, result, state, ui) {
     if (!finished && t >= timeline.duration) {
       finished = true;
       reasons.classList.remove('hidden');
+      requests?.classList.remove('hidden');
       titleUp?.classList.remove('hidden');
       tipsLine?.classList.remove('hidden');
       revenue.value.textContent = formatMoney(result.revenue + tips);

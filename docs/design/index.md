@@ -110,6 +110,11 @@ Os tipos de pedido têm peso igual no sorteio (seção, que tem seis variações
 escolha, passar o mouse ou clicar num pedido destaca os discos que servem; os pedidos específicos
 também marcam os discos com o selo "pedido".
 
+No fim da cena de resultado, o quadro "Pedidos do quadro" mostra cada pedido aberto: os atendidos com a
+gorjeta ("pedido atendido! +R$ 40") e os outros com o motivo, em uma linha ("só vale tocando no
+Fretshift", "só vale de manhã", "esse disco não é cantável", "3 estrelas, precisava de 4"…). O motivo
+vem de `missReason` (`src/core/requests.js`).
+
 ## Repetição
 
 Tocar o mesmo disco de novo **no mesmo dia** rende menos (×0,6 na 2ª vez, ×0,35 na 3ª). Isso evita

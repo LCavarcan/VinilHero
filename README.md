@@ -23,6 +23,22 @@ npm run dist                   # instalador do Windows em dist/ (VinilHero-Setup
 npm run icone                  # refaz build/icon.png
 ```
 
+## Instalar e atualizar
+
+Baixe `VinilHero-Setup-x.y.z.exe` nos [Releases](https://github.com/LCavarcan/VinilHero/releases/latest)
+e rode. Depois disso o jogo se atualiza sozinho: quando uma versão nova termina de baixar, aparece
+**Reiniciar para atualizar** na barra de cima (ou ela é instalada ao fechar o jogo). A loja fica salva.
+
+Para publicar uma versão:
+
+```bash
+npm version patch      # 0.1.0 → 0.1.1: muda o package.json, faz o commit e cria a tag v0.1.1
+git push --follow-tags # a tag dispara o workflow "Versão", que gera o instalador e publica o Release
+```
+
+Use `minor` para novidades. Em ~10 minutos o Release aparece e quem tem o jogo instalado recebe a
+versão nova na próxima vez que abrir (ou em até 6 horas, com o jogo aberto).
+
 ## Documentação
 
 | Parte | Conteúdo |

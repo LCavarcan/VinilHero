@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { closeDay, openDay, prepareDay } from '../src/core/day.js';
 import { DIFFICULTIES } from '../src/core/records.js';
 import { disc } from './helpers.js';
-import { demandingRequest, fulfilled, gaveUp, generateRequests, possibleRequests } from '../src/core/requests.js';
+import { demandingRequest, fulfilled, gaveUp, generateRequests, missReason, possibleRequests } from '../src/core/requests.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { newSave } from '../src/core/saveFormat.js';
 import { shelfRecords, syncLibrary } from '../src/core/shelves.js';
@@ -149,4 +149,27 @@ test('pedidos do dia: sorteados na abertura, iguais se refeitos; o exigente pass
   assert.ok(s.day.requests.some((r) => r.id === demanding.id), 'dia 3: último dia');
   s = nextDay(s);
   assert.ok(!s.day.requests.some((r) => r.id === demanding.id), 'dia 4: foi embora');
+});
+
+test('missReason explica por que a apresentação não atendeu', () => {
+  const calm = disc('calm', { section: 'pop', tags: ['lenta', 'cantavel'] });
+  const fast = disc('fast', { section: 'rock', tags: ['rapida'] });
+  const play = (record, p, extra = {}) => ({ mode: 'play', period: 'morning', record, play: p, P: 0.8, ...extra });
+  const tag = { kind: 'tag', tag: 'lenta', period: 'morning' };
+  assert.equal(missReason(tag, play(calm, perfect('guitar', 'Medium'))), null);
+  assert.deepEqual(missReason(tag, { ...play(calm, null), mode: 'passive' }), { why: 'notPlayed' });
+  assert.deepEqual(missReason(tag, play(calm, perfect('guitar', 'Medium'), { period: 'night' })), { why: 'period' });
+  assert.deepEqual(missReason(tag, play(fast, perfect('guitar', 'Medium'))), { why: 'tag' });
+  assert.deepEqual(missReason({ kind: 'section', section: 'rock' }, play(calm, perfect('guitar', 'Medium'))), { why: 'section' });
+  const drums = { kind: 'instrument', instrument: 'drums', minP: 0.7 };
+  assert.deepEqual(missReason(drums, play(calm, perfect('guitar', 'Medium'))), { why: 'instrument' });
+  assert.deepEqual(missReason(drums, play(calm, perfect('drums', 'Medium'), { P: 0.5 })), { why: 'lowP', P: 0.5 });
+  assert.deepEqual(missReason({ kind: 'sing' }, play(calm, perfect('guitar', 'Medium'))), { why: 'notVocals' });
+  assert.deepEqual(missReason({ kind: 'sing' }, play(fast, perfect('vocals', 'Medium'))), { why: 'notSingable' });
+  const impress = { kind: 'impress', minStars: 4 };
+  assert.deepEqual(missReason(impress, play(calm, perfect('guitar', 'Medium'))), { why: 'difficulty' });
+  assert.deepEqual(missReason(impress, play(calm, { ...perfect('guitar', 'Hard'), stars: 3 })), { why: 'stars', stars: 3 });
+  const demanding = { kind: 'demanding', songId: 'calm', difficulties: ['Medium', 'Hard', 'Expert'] };
+  assert.deepEqual(missReason(demanding, play(fast, perfect('guitar', 'Expert'))), { why: 'otherRecord' });
+  assert.deepEqual(missReason(demanding, play(calm, { ...perfect('guitar', 'Expert'), fullCombo: false })), { why: 'fullCombo' });
 });

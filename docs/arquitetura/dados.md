@@ -144,6 +144,7 @@ O que o processo principal manda para a janela (`day:result`). A janela só dese
   "reputationDelta": 1.4,
   "requestsDone": ["r12-2"],
   "requestsFailed": [],
+  "requestsMissed": [{ "id": "r12-1", "why": "period" }],
   "reasons": [{ "code": "requestDone", "kind": "instrument", "tip": 60 }, { "code": "noStock", "count": 1 }],
   "live": null
 }

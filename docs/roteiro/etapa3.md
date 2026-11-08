@@ -54,7 +54,8 @@ e não atendidos, um disco esgotado, e o instalador funciona num PC sem Node.
 ### 7. Instalador
 
 - [x] electron-builder (NSIS), ícone próprio, `npm run dist`
-- [ ] (opcional) atualização automática no mesmo esquema do Fretshift (repositório de versões)
+- [x] (opcional) atualização automática no mesmo esquema do Fretshift, com as versões nos Releases do
+      próprio repositório ([D-18](../decisoes/index.md#d-18-atualizacao-automatica))
 
 ### 8. Conferir
 

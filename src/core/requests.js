@@ -144,3 +144,32 @@ export function recordMatches(request, record) {
       return false;
   }
 }
+
+/**
+ * Por que a apresentação não atendeu o pedido (para o resultado mostrar). Devolve `null` se atendeu,
+ * senão `{ why, ...detalhes }`: notPlayed, period, tag, section, instrument, lowP, notVocals,
+ * notSingable, difficulty, stars, otherRecord, fullCombo.
+ */
+export function missReason(request, presentation) {
+  if (fulfilled(request, presentation)) return null;
+  const { mode, period, record, play, P } = presentation;
+  if (mode !== 'play' || !play) return { why: 'notPlayed' };
+  if (request.period && request.period !== period) return { why: 'period' };
+  switch (request.kind) {
+    case 'tag':
+      return { why: 'tag' };
+    case 'section':
+      return { why: 'section' };
+    case 'instrument':
+      return play.instrument !== request.instrument ? { why: 'instrument' } : { why: 'lowP', P };
+    case 'sing':
+      return play.instrument !== 'vocals' ? { why: 'notVocals' } : { why: 'notSingable' };
+    case 'impress':
+      return HARD.includes(play.difficulty) ? { why: 'stars', stars: play.stars ?? 0 } : { why: 'difficulty' };
+    case 'demanding':
+      if (record.id !== request.songId) return { why: 'otherRecord' };
+      return request.difficulties.includes(play.difficulty) ? { why: 'fullCombo' } : { why: 'difficulty' };
+    default:
+      return { why: 'other' };
+  }
+}

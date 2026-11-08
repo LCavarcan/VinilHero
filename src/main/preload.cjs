@@ -28,4 +28,10 @@ contextBridge.exposeInMainWorld('api', {
   shop: { buy: invoke('shop:buy') },
   records: { move: invoke('record:move') },
   stock: { restock: invoke('stock:restock'), setAuto: invoke('stock:auto'), topUp: invoke('stock:top-up') },
+  update: {
+    version: invoke('update:version'),
+    status: invoke('update:status'),
+    install: invoke('update:install'),
+    onReady: on('update:ready'),
+  },
 });

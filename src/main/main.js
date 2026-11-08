@@ -9,6 +9,7 @@ import { emptyCache, loadRecords, readPlays, watchFretshift } from '../bridge/fr
 import { findFretshiftDir, isFretshiftDir } from '../bridge/fretshiftPaths.js';
 import { createGame } from './game.js';
 import { createStore } from './store.js';
+import { startUpdater } from './updater.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const dataFile = (name) => path.join(app.getPath('userData'), name);
@@ -198,6 +199,7 @@ if (!app.requestSingleInstanceLock()) {
     await connect();
     pollTimer = setInterval(pollWhileWaiting, POLL_MS);
     createWindow();
+    startUpdater(() => win);
   });
 
   app.on('window-all-closed', () => {

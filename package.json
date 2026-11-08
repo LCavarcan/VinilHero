@@ -1,7 +1,7 @@
 {
   "name": "vinilhero",
   "productName": "VinilHero",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Simulador de loja de discos que se move com a sua performance no Fretshift",
   "type": "module",
   "main": "src/main/main.js",
@@ -20,6 +20,9 @@
   "license": "MIT",
   "allowScripts": {
     "electron@44.7.2": true
+  },
+  "dependencies": {
+    "electron-updater": "6.8.11"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -49,6 +52,18 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "artifactName": "VinilHero-Setup-${version}.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "LCavarcan",
+        "repo": "VinilHero",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LCavarcan/VinilHero.git"
   }
 }

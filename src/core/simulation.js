@@ -5,7 +5,7 @@ import { BALANCE } from './balance.js';
 import { customerMix, drawVisitors } from './customers.js';
 import { eventFactor, isKaraokeNight } from './events.js';
 import { PASSIVE_P, performanceOf } from './performance.js';
-import { fulfilled, gaveUp, isOpenRequest } from './requests.js';
+import { fulfilled, gaveUp, isOpenRequest, missReason } from './requests.js';
 import { between } from './rng.js';
 
 const V = BALANCE.visitors;
@@ -197,6 +197,9 @@ export function resolvePresentation({
   const openRequests = (day.requests ?? []).filter((r) => isOpenRequest(r, day.number));
   const done = openRequests.filter((r) => fulfilled(r, presentation));
   const failed = openRequests.filter((r) => gaveUp(r, presentation));
+  const missed = openRequests
+    .filter((r) => !done.includes(r) && !failed.includes(r))
+    .map((r) => ({ id: r.id, ...missReason(r, presentation) }));
   const tips = done.reduce((sum, r) => sum + r.tip, 0);
   const requestBonus = done.reduce((sum, r) => sum + r.reputation, 0);
 
@@ -228,6 +231,7 @@ export function resolvePresentation({
     reputationDelta: Math.round(delta * 100) / 100,
     requestsDone: done.map((r) => r.id),
     requestsFailed: failed.map((r) => r.id),
+    requestsMissed: missed,
     reasons: reasonsFor({
       visitors,
       passive,

@@ -187,4 +187,15 @@ window.api.fretshift.onStatus((s) => {
 });
 window.api.state.onChange((s) => setState(s));
 
+// atualização automática (só no app instalado): versão nova baixada → um clique reinicia e instala
+function showUpdate(info) {
+  if (!info) return;
+  $('update').title = `Versão ${info.version} baixada. O jogo fecha, instala e abre de novo (a loja fica salva).`;
+  $('update').classList.remove('hidden');
+}
+$('update').addEventListener('click', () => window.api.update.install());
+window.api.update.onReady(showUpdate);
+window.api.update.status().then(showUpdate, () => {});
+window.api.update.version().then((v) => { document.title = `VinilHero ${v}`; }, () => {});
+
 refresh();

@@ -145,6 +145,38 @@ export function requestHint(r) {
   }
 }
 
+/** Por que a apresentação não atendeu o pedido (`miss`: de requestsMissed do resultado). */
+export function missText(r, miss) {
+  switch (miss.why) {
+    case 'notPlayed':
+      return 'só vale tocando no Fretshift';
+    case 'period':
+      return `só vale ${PERIOD_IN[r.period]}`;
+    case 'tag':
+      return `esse disco não é ${TAG_NAMES[r.tag] ?? r.tag}`;
+    case 'section':
+      return `esse disco não é da seção ${SECTION_NAMES[r.section]}`;
+    case 'instrument':
+      return `precisava tocar ${INSTRUMENT_NAMES[r.instrument]?.toLowerCase()}`;
+    case 'lowP':
+      return `faltou capricho: desempenho ${decimal.format(miss.P)}, precisava de ${decimal.format(r.minP)}`;
+    case 'notVocals':
+      return 'precisava cantar (voz)';
+    case 'notSingable':
+      return 'esse disco não é cantável';
+    case 'difficulty':
+      return r.kind === 'demanding' ? 'precisa ser em Médio ou acima' : 'precisa ser em Difícil ou Expert';
+    case 'stars':
+      return `${plural(miss.stars, 'estrela', 'estrelas')}, precisava de ${r.minStars}`;
+    case 'otherRecord':
+      return `continua esperando até o dia ${r.expiresDay}`;
+    case 'fullCombo':
+      return 'precisava de full combo';
+    default:
+      return 'não foi dessa vez';
+  }
+}
+
 export const ERRORS = {
   noGame: 'A loja ainda não abriu: falta encontrar o Fretshift.',
   dayClosed: 'O dia já acabou. Feche o dia para abrir o próximo.',

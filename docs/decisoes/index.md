@@ -195,6 +195,20 @@ página).
 - **Resultado:** todas as metas no alvo de novo
   ([tabela](../design/progressao.md#metas-de-ritmo-para-a-calibragem)).
 
+### D-18 · Atualização automática
+
+- **Contexto:** o Fretshift se atualiza sozinho (`electron-updater` + GitHub Releases) e a ideia era
+  repetir o esquema. Lá as versões ficam num repositório separado (`fretshift-releases`) porque o
+  código é privado, o que exige um token próprio no GitHub Actions.
+- **Escolha:** o mesmo atualizador (`src/main/updater.js`, quase igual ao do Fretshift), mas com as
+  versões nos Releases do **próprio** `LCavarcan/VinilHero`, que é público. O workflow publica com o
+  `GITHUB_TOKEN` do Actions, sem token pessoal para criar nem renovar.
+- **Como funciona:** o app instalado procura uma versão nova ao abrir e a cada 6 horas, baixa em
+  segundo plano e mostra **Reiniciar para atualizar** na barra de cima. Se ninguém clicar, instala ao
+  fechar. O save fica em `%APPDATA%\VinilHero` e não é tocado. Em `npm start` não procura nada.
+- **Consequência:** a 0.0.1 (sem atualizador) precisa ser trocada à mão uma vez pela 0.1.0; daí em
+  diante as versões chegam sozinhas.
+
 ## Para a usuária decidir :material-help-circle:
 
 | Pergunta | Proposta atual |
