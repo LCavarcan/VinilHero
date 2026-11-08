@@ -1,7 +1,7 @@
 {
   "name": "vinilhero",
   "productName": "VinilHero",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Simulador de loja de discos que se move com a sua performance no Fretshift",
   "type": "module",
   "main": "src/main/main.js",
