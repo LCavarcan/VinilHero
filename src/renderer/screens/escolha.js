@@ -8,35 +8,62 @@ import {
   PERIOD_NAMES,
   SECTION_NAMES,
   TAG_NAMES,
+  formatMoney,
   formatP,
   plural,
+  requestText,
   stars,
 } from '../text.js';
+import { eventBanner, requestBoard, requestedIds } from './quadro.js';
 
-// o disco selecionado sobrevive às atualizações da tela
+// o disco selecionado e o pedido em destaque sobrevivem às atualizações da tela
 let selectedId = null;
+let focusId = null;
 
 const allRecords = (state) => [...state.shelves.sections.flatMap((s) => s.records), ...state.shelves.storage];
 
 export function render(root, state, ui) {
   const records = allRecords(state);
   if (selectedId && !records.some((r) => r.id === selectedId)) selectedId = null;
+  const focused = state.day.requests.find((r) => r.id === focusId && r.open);
+  if (!focused) focusId = null;
+  const view = {
+    ui,
+    root,
+    requested: requestedIds(state),
+    // pedido em destaque: só os discos dele; senão, os de qualquer pedido aberto
+    highlight: focused ? new Set(focused.matches) : null,
+  };
 
   const shelves = el('div', 'shelves');
-  for (const section of state.shelves.sections) shelves.append(sectionBlock(section, state, ui, root));
-  shelves.append(storageBlock(state, ui, root));
+  for (const section of state.shelves.sections) shelves.append(sectionBlock(section, state, view));
+  shelves.append(storageBlock(state, view));
 
   const period = PERIOD_NAMES[state.day.period].toLowerCase();
+  // abertura do dia: a manhã antes da primeira apresentação
+  const opening = state.day.period === 'morning' && !state.day.presentations.length;
   const header = el(
     'div',
     'screen-header',
-    el('h1', null, `${PERIOD_NAMES[state.day.period]}: qual disco toca agora?`),
+    opening
+      ? el('h1', null, `Dia ${state.day.number}: a loja abriu`)
+      : el('h1', null, `${PERIOD_NAMES[state.day.period]}: qual disco toca agora?`),
     el(
       'p',
       'muted',
       `Escolha um disco para a ${period}. Toque no Fretshift (qualquer instrumento e dificuldade) ou só ponha pra tocar.`,
     ),
   );
+  const arrived = Object.values(state.day.arrivals ?? {}).reduce((a, b) => a + b, 0);
+  const arrivals = opening && arrived ? el('p', 'arrivals', `Chegaram ${plural(arrived, 'cópia', 'cópias')} da reposição.`) : null;
+  const board = requestBoard(state, {
+    focus: focusId,
+    onFocus: (id) => {
+      if (id === focusId) return;
+      focusId = id;
+      render(root, state, ui);
+    },
+  });
 
   const presentations = state.day.presentations.length
     ? el(
@@ -47,11 +74,16 @@ export function render(root, state, ui) {
       )
     : null;
 
-  const layout = el('div', 'choose-layout', el('div', 'choose-main', header, presentations, shelves), panel(state, ui));
+  const layout = el(
+    'div',
+    'choose-layout',
+    el('div', 'choose-main', header, eventBanner(state), arrivals, board, presentations, shelves),
+    panel(state, ui),
+  );
   root.replaceChildren(el('section', 'screen', layout));
 }
 
-function sectionBlock(section, state, ui, root) {
+function sectionBlock(section, state, view) {
   const block = el(
     'div',
     'shelf',
@@ -63,14 +95,14 @@ function sectionBlock(section, state, ui, root) {
     ),
   );
   const grid = el('ul', 'records');
-  for (const r of section.records) grid.append(card(r, state, ui, root));
+  for (const r of section.records) grid.append(card(r, state, view));
   if (!section.records.length) grid.append(el('li', 'empty-slot', 'Arraste um disco para cá'));
   block.append(grid);
-  dropTarget(block, section.id, ui);
+  dropTarget(block, section.id, view.ui);
   return block;
 }
 
-function storageBlock(state, ui, root) {
+function storageBlock(state, view) {
   const block = el(
     'div',
     'shelf storage',
@@ -82,10 +114,10 @@ function storageBlock(state, ui, root) {
     ),
   );
   const grid = el('ul', 'records');
-  for (const r of state.shelves.storage) grid.append(card(r, state, ui, root));
+  for (const r of state.shelves.storage) grid.append(card(r, state, view));
   if (!state.shelves.storage.length) grid.append(el('li', 'empty-slot', 'Vazio'));
   block.append(grid);
-  dropTarget(block, 'storage', ui);
+  dropTarget(block, 'storage', view.ui);
   return block;
 }
 
@@ -106,8 +138,15 @@ function dropTarget(node, section, ui) {
   });
 }
 
-function card(record, state, ui, root) {
-  const li = el('li', `record${record.id === selectedId ? ' selected' : ''}${record.section === 'storage' ? ' stored' : ''}`);
+function card(record, state, view) {
+  const { ui, root } = view;
+  const wanted = view.requested.has(record.id);
+  const dimmed = view.highlight && !view.highlight.has(record.id);
+  const li = el(
+    'li',
+    `record${record.id === selectedId ? ' selected' : ''}${record.section === 'storage' ? ' stored' : ''}` +
+      `${wanted ? ' wanted' : ''}${dimmed ? ' dimmed' : ''}`,
+  );
   li.draggable = true;
   li.tabIndex = 0;
   li.addEventListener('dragstart', (e) => {
@@ -127,15 +166,45 @@ function card(record, state, ui, root) {
   });
   const badges = el('div', 'badges');
   if (record.mastered) badges.append(el('span', 'badge gold', 'dominado'));
+  if (wanted) badges.append(el('span', 'badge wanted', 'pedido'));
   if (record.playedToday) badges.append(el('span', 'badge', `hoje ×${record.playedToday}`));
+  const stock = el(
+    'span',
+    `stock${record.stock === 0 ? ' out' : record.stock === 1 ? ' low' : ''}`,
+    record.stock === 0 ? 'esgotado' : plural(record.stock, 'cópia', 'cópias'),
+    record.onOrder ? el('span', 'muted', ` · +${record.onOrder} amanhã`) : null,
+  );
   li.append(
     cover(record),
     badges,
     el('div', 'title', record.title),
     el('div', 'artist', record.artist || 'Artista desconhecido'),
     el('div', 'tags', ...record.tags.map((t) => el('span', 'tag', TAG_NAMES[t] ?? t))),
+    stock,
   );
   return li;
+}
+
+/** Estoque do disco no painel: cópias, encomenda e os botões de repor. */
+function stockBox(record, state, ui) {
+  const price = state.restock.copyPrice;
+  const blocked = state.shop.money < 0;
+  const restock = (copies) =>
+    button(`+${copies} · ${formatMoney(copies * price)}`, 'ghost small', () => ui.act(window.api.stock.restock({ songId: record.id, copies })), {
+      disabled: blocked || state.shop.money < copies * price,
+      title: blocked ? 'Contas atrasadas: estoque bloqueado' : 'Chega na abertura do dia seguinte',
+    });
+  return el(
+    'div',
+    'stock-box',
+    el(
+      'span',
+      record.stock === 0 ? 'negative' : null,
+      record.stock === 0 ? 'Esgotado' : `${plural(record.stock, 'cópia', 'cópias')} na loja`,
+      record.onOrder ? el('span', 'muted', ` · +${record.onOrder} chegando amanhã`) : null,
+    ),
+    el('div', 'row-buttons', el('span', 'muted small', 'Repor:'), restock(1), restock(3)),
+  );
 }
 
 function panel(state, ui) {
@@ -151,6 +220,7 @@ function panel(state, ui) {
   }
   const best = Object.entries(record.best ?? {});
   const stored = record.section === 'storage';
+  const serves = state.day.requests.filter((r) => r.open && r.matches.includes(record.id));
   const actions = el(
     'div',
     'actions',
@@ -183,6 +253,10 @@ function panel(state, ui) {
       ? el('p', 'warning', `Já tocou ${plural(record.playedToday, 'vez', 'vezes')} hoje: tocar de novo atrai menos gente.`)
       : null,
     stored ? el('p', 'warning', 'Está no depósito: arraste para uma prateleira para poder tocar.') : null,
+    serves.length
+      ? el('div', 'serves', el('span', 'label', 'Pode atender'), ...serves.map((r) => el('p', 'small', `“${requestText(r)}”`)))
+      : null,
+    stockBox(record, state, ui),
     actions,
   );
 }

@@ -27,10 +27,10 @@ test('Fácil perfeita e Expert com P 0,71 rendem movimento parecido (±10%)', ()
   }
 });
 
-test('reputação: exemplos com reputação 20 (ganhos × 0,69)', () => {
+test('reputação: exemplos com reputação 20 (ganhos × 0,58)', () => {
   const d = (o) => Math.round(reputationDelta({ mode: 'play', reputation: 20, ...o }) * 10) / 10;
-  assert.equal(d({ P: P071 }), 0.7);
-  assert.equal(d({ P: 1, fullCombo: true }), 2.3);
+  assert.equal(d({ P: P071 }), 0.6);
+  assert.equal(d({ P: 1, fullCombo: true }), 1.9);
   assert.equal(d({ P: P035 }), -0);
   assert.equal(d({ P: P008, critic: true }), -2.2);
 });

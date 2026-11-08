@@ -5,7 +5,7 @@ import { BALANCE } from './balance.js';
 import { settle } from './day.js';
 import { performanceOf } from './performance.js';
 import { mulberry32, seedFrom } from './rng.js';
-import { mergedRecord, newRecordEntry, sectionsWithRecords, STORAGE } from './shelves.js';
+import { mergedRecord, newRecordEntry, sectionsWithRecords, shelfRecords, STORAGE } from './shelves.js';
 import { resolvePresentation } from './simulation.js';
 
 const round2 = (x) => Math.round(x * 100) / 100;
@@ -61,12 +61,11 @@ export function importHistory(state, plays) {
 export function presentationContext(state, songId, library) {
   const summary = library.find((s) => s.id === songId) ?? { id: songId, title: null, tags: [] };
   const record = mergedRecord(state, summary);
-  const sectionRecords = library
-    .filter((s) => state.records[s.id]?.section === record.section && record.section !== STORAGE)
-    .map((s) => mergedRecord(state, s));
+  const shelf = shelfRecords(state, library);
+  const sectionRecords = record.section === STORAGE ? [] : shelf.filter((r) => r.section === record.section);
   if (!sectionRecords.some((r) => r.id === songId)) sectionRecords.push(record);
   const sections = sectionsWithRecords(state, library);
-  return { record, sectionRecords, sections: sections.length ? sections : [record.section] };
+  return { record, sectionRecords, shelfRecords: shelf, sections: sections.length ? sections : [record.section] };
 }
 
 /** Semente da apresentação: refazer o cálculo dá o mesmo resultado. */

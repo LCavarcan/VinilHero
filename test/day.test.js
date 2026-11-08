@@ -53,7 +53,9 @@ test('o período avança e o dia fecha depois da noite', () => {
   assert.equal(sum.profit, 180);
   assert.equal(state.shop.money, 480);
   assert.equal(state.day.period, 'closed');
-  assert.deepEqual(state.history, [{ day: 1, revenue: 300, rent: 120, money: 480, reputation: 9.5 }]);
+  assert.deepEqual(state.history, [
+    { day: 1, revenue: 300, tips: 0, rent: 120, restock: 0, money: 480, reputation: 9.5, visitors: 9, sales: 6, event: null },
+  ]);
 
   const next = openDay(state);
   assert.equal(next.day.number, 2);

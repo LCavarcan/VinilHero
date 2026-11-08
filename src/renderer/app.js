@@ -5,7 +5,9 @@ import { $, el, toast } from './dom.js';
 import * as acerto from './screens/acerto.js';
 import * as aguardando from './screens/aguardando.js';
 import * as escolha from './screens/escolha.js';
+import * as estoque from './screens/estoque.js';
 import * as melhorias from './screens/melhorias.js';
+import * as minhaloja from './screens/minhaloja.js';
 import * as resultado from './screens/resultado.js';
 import {
   ERRORS,
@@ -20,7 +22,7 @@ import {
 let state = null;
 let status = null;
 // telas que a jogadora abriu por cima do fluxo do dia
-let overlay = null; // 'upgrades' | null
+let overlay = null; // 'upgrades' | 'stock' | 'stats' | null
 // resultados esperando para serem mostrados, um de cada vez
 const results = [];
 let showingResult = null;
@@ -41,6 +43,10 @@ const ui = {
   },
   openUpgrades() {
     overlay = 'upgrades';
+    route();
+  },
+  open(name) {
+    overlay = name;
     route();
   },
   closeOverlay() {
@@ -88,8 +94,7 @@ function renderHud() {
     el('span', `hud-money${shop.money < 0 ? ' negative' : ''}`, formatMoney(shop.money)),
     el('span', 'hud-rep', `★ ${formatReputation(shop.reputation)}`, el('small', null, TITLE_NAMES[shop.title])),
   );
-  $('nav-upgrades').classList.toggle('active', overlay === 'upgrades');
-  $('nav-shop').classList.toggle('active', overlay !== 'upgrades');
+  for (const [id, name] of NAV) $(id).classList.toggle('active', overlay === name);
 }
 
 function renderStatus() {
@@ -108,13 +113,28 @@ function renderStatus() {
 function pick() {
   if (!state) return null;
   if (showingResult || results.length) return 'result';
-  if (overlay === 'upgrades') return 'upgrades';
+  if (overlay) return overlay;
   if (state.pending?.mode === 'play') return 'waiting';
   if (['morning', 'afternoon', 'night'].includes(state.day.period)) return 'choose';
   return 'close';
 }
 
-const SCREENS = { choose: escolha, waiting: aguardando, result: resultado, close: acerto, upgrades: melhorias };
+const SCREENS = {
+  choose: escolha,
+  waiting: aguardando,
+  result: resultado,
+  close: acerto,
+  upgrades: melhorias,
+  stock: estoque,
+  stats: minhaloja,
+};
+// botões do topo → tela (null: a loja, o fluxo do dia)
+const NAV = [
+  ['nav-shop', null],
+  ['nav-stock', 'stock'],
+  ['nav-upgrades', 'upgrades'],
+  ['nav-stats', 'stats'],
+];
 
 function route() {
   $('screen-not-found').classList.toggle('hidden', !!state || !status || status.found);
@@ -132,7 +152,7 @@ function route() {
       showingResult = results.shift();
       hudOverride = {
         period: showingResult.period,
-        money: showingResult.shop.money - showingResult.revenue,
+        money: showingResult.shop.money - showingResult.revenue - (showingResult.tips ?? 0),
         reputation: showingResult.shop.reputation - showingResult.reputationDelta,
         title: showingResult.titleBefore,
       };
@@ -159,8 +179,7 @@ $('pick-dir').addEventListener('click', async () => {
   if (res.ok) await refresh();
   else if (res.error) $('pick-error').textContent = res.error;
 });
-$('nav-upgrades').addEventListener('click', () => ui.openUpgrades());
-$('nav-shop').addEventListener('click', () => ui.closeOverlay());
+for (const [id, name] of NAV) $(id).addEventListener('click', () => ui.open(name));
 
 window.api.fretshift.onStatus((s) => {
   status = s;

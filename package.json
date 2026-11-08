@@ -12,7 +12,9 @@
     "start": "electron .",
     "test": "eslint . && node --test",
     "lint": "eslint .",
-    "simular": "node src/cli/simular.js"
+    "simular": "node src/cli/simular.js",
+    "dist": "electron-builder --win --publish never",
+    "icone": "node scripts/icone.js"
   },
   "author": "LCavarcan",
   "license": "MIT",
@@ -22,7 +24,31 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "electron": "44.7.2",
+    "electron-builder": "26.15.3",
     "eslint": "^10.14.0",
     "globals": "^17.14.0"
+  },
+  "build": {
+    "appId": "com.lcavarcan.vinilhero",
+    "productName": "VinilHero",
+    "files": [
+      "src/**/*",
+      "package.json",
+      "!src/cli/**"
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "VinilHero-Setup-${version}.${ext}"
+    }
   }
 }

@@ -16,19 +16,21 @@ Esses são os **alvos** da calibragem, conferidos com o simulador (`npm run simu
 [Simulação](../arquitetura/simulacao.md#simulador-de-balanceamento)). As metas de lucro valem para o
 mesmo nível (Médio), para isolar o desempenho; o Expert tem metas próprias logo abaixo.
 
-| Jogo | Resultado esperado por dia | Simulador (etapa 2) |
-|---|---|---|
-| Só pôr os discos pra tocar | empata com o aluguel (sem lucro, sem prejuízo) | +R$ 18 |
-| Tocar com P ≈ 0,5 (Médio) | lucro de ~R$ 150 | R$ 149 |
-| Tocar com P ≈ 0,8 (Médio) | lucro de ~R$ 350 | R$ 395 |
-| Tocar com P ≈ 0,8 em Expert | 1,2× a 1,6× o Médio (clientes melhores) | ×1,44 (R$ 570) |
-| Fácil perfeito × Expert com P 0,7 | mesmo movimento (±10%) | 11 × 11 visitantes |
-| Primeiro palco (guardando dinheiro) | no dia 6 a 8 tocando bem | dia 7,6 |
-| Reputação 50 | depois de ~25 dias tocando bem | dia 22 |
+| Jogo | Resultado esperado por dia | Etapa 2 | Etapa 3 |
+|---|---|---|---|
+| Só pôr os discos pra tocar | empata com o aluguel (sem lucro, sem prejuízo) | +R$ 18 | −R$ 17 |
+| Tocar com P ≈ 0,5 (Médio) | lucro de ~R$ 150 | R$ 149 | R$ 146 |
+| Tocar com P ≈ 0,8 (Médio) | lucro de ~R$ 350 | R$ 395 | R$ 349 |
+| Tocar com P ≈ 0,8 em Expert | 1,2× a 1,6× o Médio (clientes melhores) | ×1,44 (R$ 570) | ×1,58 (R$ 553) |
+| Fácil perfeito × Expert com P 0,7 | mesmo movimento (±10%) | 11 × 11 visitantes | 11 × 11 |
+| Primeiro palco (guardando dinheiro) | no dia 6 a 8 tocando bem | dia 7,6 | dia 7,0 |
+| Reputação 50 | depois de ~25 dias tocando bem | dia 22 | dia 20,8 |
 
 Lucro: média dos 10 primeiros dias, sem comprar melhorias, 100 sementes, biblioteca de 30 discos
-(os resultados quase não mudam com 12 ou 60 discos). O palco só existe na etapa 3; o simulador conta o
-primeiro dia em que a loja teria reputação 25 e R$ 1 500.
+(os resultados quase não mudam com 12 ou 60 discos). Na etapa 3 o lucro já desconta a reposição de
+estoque (automática ligada) e soma as gorjetas; a jogadora fictícia atende os pedidos que um disco
+da prateleira atende (menos o do cliente exigente). O simulador conta o primeiro dia em que a loja
+teria reputação 25 e R$ 1 500 para o palco.
 
 ## Preços
 
@@ -46,7 +48,7 @@ O valor é sorteado de forma uniforme na faixa (com a semente da apresentação,
 ## Despesas
 
 - **Aluguel diário:** `R$ 120 + R$ 15 × melhorias compradas`. A loja maior custa mais.
-- **Estoque** (etapa 3): R$ 15 por cópia.
+- **Estoque:** R$ 15 por cópia.
 
 ### Ficar no vermelho
 
@@ -79,13 +81,19 @@ Disco com **5 estrelas em Difícil ou Expert** em qualquer instrumento:
 A conquista vale a partir da partida que a fez, inclusive partidas antigas do `scores.json` (ver
 [importação do histórico](../arquitetura/integracao.md#historico-anterior)).
 
-## Estoque (etapa 3)
+## Estoque
 
 - Cada disco começa com **3 cópias**.
-- Uma venda consome 1 cópia. Sem cópia, o cliente tenta outro disco da mesma seção; se não houver,
-  vai embora (o painel mostra *"2 clientes saíram sem o disco"*).
-- Reposição: R$ 15 por cópia, entregue na abertura do dia seguinte.
-- Opção **reposição automática**: repõe até 3 cópias de todo disco vendido, se houver saldo.
+- Uma venda consome 1 cópia (a venda sozinha de disco dominado e o segundo disco da cafeteria
+  também). Sem cópia, o cliente tenta outro disco da mesma seção; se não houver, vai embora (o painel
+  mostra *"2 clientes saíram sem o disco"*).
+- Reposição: R$ 15 por cópia, paga na hora e entregue na abertura do dia seguinte. A tela de estoque
+  tem "completar tudo até 3" (os mais vendidos primeiro, até onde o saldo pagar).
+- Opção **reposição automática** (no save, [D-16](../decisoes/index.md#d-16-reposicao-automatica-no-save)):
+  no fechamento do dia, depois do aluguel, completa até 3 cópias (contando as encomendadas) de cada
+  disco vendido no dia, os mais vendidos primeiro, sem deixar o saldo negativo. O custo entra no lucro
+  do dia.
+- Saldo negativo bloqueia o estoque, como as melhorias.
 
 ## Títulos da loja
 

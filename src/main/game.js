@@ -2,11 +2,14 @@
 // Não depende do Electron (o main.js só liga isto às janelas e ao IPC), então dá para testar.
 
 import { randomInt } from 'node:crypto';
-import { cancel, choose, closeDay, openDay, titleOf } from '../core/day.js';
+import { BALANCE } from '../core/balance.js';
+import { cancel, choose, closeDay, openDay, prepareDay, titleOf } from '../core/day.js';
 import { buy, rent, upgradeOptions } from '../core/economy.js';
 import { importHistory, processPlays, resolvePassive } from '../core/plays.js';
+import { isOpenRequest, recordMatches } from '../core/requests.js';
 import { newSave } from '../core/saveFormat.js';
-import { moveRecord, shelfView, syncLibrary } from '../core/shelves.js';
+import { moveRecord, shelfRecords, shelfView, syncLibrary } from '../core/shelves.js';
+import { restock, setAutoRestock, topUp } from '../core/stock.js';
 import { readSave, writeSave } from './saveFile.js';
 
 export function createGame({ file, now = () => new Date().toISOString(), randomSeed = () => randomInt(2 ** 32) }) {
@@ -48,6 +51,8 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
     const read = readSave(file);
     if (read.broken) notices.push({ code: 'saveBroken', file: read.broken, error: read.error });
     state = syncLibrary(read.save ?? newSave(randomSeed(), now()), library);
+    // evento e pedidos do dia (na primeira abertura, ou num save da versão anterior)
+    state = prepareDay(state, library);
     if (!state.historyImported) {
       const imported = importHistory(state, plays);
       state = imported.state;
@@ -65,19 +70,31 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
     if (!state) return null;
     const shelves = shelfView(state, library);
     const playedToday = state.day.playedToday;
-    const withToday = (r) => ({ ...r, playedToday: playedToday[r.id] ?? 0 });
+    const orders = state.restock.orders;
+    const withToday = (r) => ({ ...r, playedToday: playedToday[r.id] ?? 0, onOrder: orders[r.id] ?? 0 });
+    const shelf = shelfRecords(state, library);
+    // pedidos do quadro: os abertos com os discos da prateleira que podem atendê-los
+    const requests = state.day.requests.map((r) => ({
+      ...r,
+      open: isOpenRequest(r, state.day.number),
+      songTitle: r.songId ? (findRecord(r.songId)?.title ?? null) : undefined,
+      matches: shelf.filter((rec) => recordMatches(r, rec)).map((rec) => rec.id),
+    }));
     return {
-      day: state.day,
+      day: { ...state.day, requests },
       shop: { ...state.shop, title: titleOf(state.shop.reputation) },
       pending: state.pending && { ...state.pending, title: findRecord(state.pending.songId)?.title ?? null },
       rent: rent(state),
       upgrades: state.upgrades,
+      restock: { auto: state.restock.auto, copyPrice: BALANCE.stock.copyPrice, orders },
       upgradeOptions: upgradeOptions(state),
       shelves: {
         sections: shelves.sections.map((s) => ({ ...s, records: s.records.map(withToday) })),
         storage: shelves.storage.map(withToday),
       },
       lastSummary: state.day.period === 'closed' ? (lastSummary ?? state.history.at(-1) ?? null) : null,
+      history: state.history,
+      stats: state.stats,
       unseen,
       notices,
     };
@@ -130,8 +147,16 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
     },
     openDay() {
       lastSummary = null;
-      return change(openDay);
+      return change((s) => openDay(s, { library }));
     },
+    restock: ({ songId, copies }) => change((s) => restock(s, songId, copies)),
+    setAutoRestock: ({ auto }) => change((s) => setAutoRestock(s, auto)),
+    /** Completa até 3 cópias de cada disco da prateleira, os mais vendidos primeiro, enquanto der. */
+    topUp: () =>
+      change((s) => {
+        const shelf = shelfRecords(s, library).sort((a, b) => (b.sold ?? 0) - (a.sold ?? 0));
+        return topUp(s, shelf.map((r) => r.id)).state;
+      }),
     buy: ({ upgradeId, section }) => change((s) => buy(s, upgradeId, { section })),
     moveRecord: ({ songId, section }) =>
       change((s) =>

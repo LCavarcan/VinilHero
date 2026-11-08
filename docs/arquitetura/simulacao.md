@@ -45,18 +45,24 @@ export function seedFrom(...parts) {
 performanceOf(play)                       // → P (0..1)
 
 // customers.js
-customerMix({ difficulty, period, reputation, event })   // → pesos por arquétipo
-drawVisitors(rng, count, mix, records)                   // → [{ archetype, section?, instrument?, budget }]
+customerMix({ difficulty, period, reputation, criticToday, booth, karaokeNight })  // → pesos por arquétipo
+drawVisitors(rng, count, mix, sections)                  // → [{ archetype, section?, instrument? }]
 
 // simulation.js
-resolvePresentation({ state, record, play, mode, rng, live })
-// → {
-//     P, visitors: [...], purchases: [{ visitor, songId, price }],
-//     revenue, reputationDelta, requestsDone: [...], reasons: ["Expert com 4 estrelas atraiu 2 colecionadores"]
-//   }
+resolvePresentation({ state, record, sectionRecords, shelfRecords, sections, play, mode, rng, live })
+// → { P, visitors, soloSales, sales, revenue, tips, stockUsed, critic, reputationDelta,
+//     requestsDone, requestsFailed, event, E, ignored, reasons: [{ code, … }] }
+//   (formato completo em Dados: "Resultado de uma apresentação")
+
+// requests.js · events.js · stock.js
+generateRequests(rng, { dayNumber, shelfRecords, taken })  // 2 ou 3 pedidos possíveis
+fulfilled(request, presentation)          // a apresentação atende o pedido?
+drawEvent(rng, state) / eventFactor(event, period, record)
+restock(state, songId, copies) / autoRestock(state) / topUp(state, songIds) / receiveOrders(state)
 
 // day.js  (máquina de estados; sempre devolve um estado novo)
-openDay(state, { rng })                   // pedidos e evento
+prepareDay(state, library)                // sorteia o evento e os pedidos do dia (uma vez)
+openDay(state, { library })               // encomendas chegam, novo dia, prepareDay
 choose(state, { songId, mode, now })      // → state com pending
 settle(state, result)                     // aplica o resultado ao estado
 closeDay(state)                           // → { state, summary } (aluguel, saldo, títulos)
@@ -111,26 +117,32 @@ funções do `core/` que o jogo usa, e imprime a evolução da loja.
 ```text
 npm run simular -- --metas                      confere todas as metas de ritmo
 npm run simular -- --perfil bom --dias 25       um perfil, dia a dia (média das sementes)
-opções: --sementes 100  --biblioteca 30  --sem-compras  --perfil todos
+opções: --sementes 100  --biblioteca 30  --sem-compras  --sem-reposicao  --perfil todos
 ```
 
-Saída real depois da calibragem (`--perfil bom --dias 25`, compra a melhoria mais barata guardando
-2 dias de aluguel):
+Saída real depois da calibragem da etapa 3 (`--perfil bom --dias 25`, compra a melhoria mais barata
+guardando 2 dias de aluguel, reposição automática ligada, atende os pedidos que algum disco da
+prateleira atende):
 
 ```text
 perfil "bom" (P ~ N(0,8; 0,08), Médio), 100 sementes, biblioteca de 30
-dia   faturamento   lucro    saldo   reputação  melhorias (semente 0)
-  1       R$ 408    R$ 288   R$ 448        8.3  som 0, vitrine 0
-  2       R$ 452    R$ 327   R$ 513       11.4  som 1, vitrine 0
-  5       R$ 664    R$ 513   R$ 839       19.9  som 1, vitrine 1
- 10       R$ 894    R$ 716  R$ 1523       31.4  som 2, vitrine 2
- 15      R$ 1174    R$ 979  R$ 3632       40.5  som 3, vitrine 2
- 25      R$ 1397   R$ 1202  R$ 14495       54.2  som 3, vitrine 2
+dia  faturamento gorjetas estoque   lucro    saldo  reputação pedidos esgotados  melhorias (semente 0)
+  1      R$ 395    R$ 83  R$ 103  R$ 255   R$ 455        8.8 1.7/2.6       0.7  som 0, vitrine 0
+  5      R$ 645    R$ 77  R$ 159  R$ 416   R$ 729       21.2 1.6/2.5       1.6  som 1, vitrine 1
+ 10      R$ 880    R$ 86  R$ 222  R$ 563  R$ 1020       33.0 1.8/2.6       2.6  som 2, vitrine 1, neon, booth
+ 15     R$ 1267    R$ 91  R$ 317  R$ 826  R$ 1352       43.3 1.8/2.6       4.7  som 2, vitrine 2, neon, booth, stage
+ 20     R$ 1691    R$ 87  R$ 423 R$ 1110  R$ 1972       50.8 1.8/2.7       7.0  som 3, vitrine 2, neon, booth, stage, cafe
+ 25     R$ 1809    R$ 82  R$ 455 R$ 1180  R$ 6981       56.6 1.7/2.7       8.0  som 3, vitrine 2, neon, booth, stage, cafe
+eventos diferentes na 1ª semana: 1.9
 ```
+
+"pedidos" é atendidos/total do dia; "esgotados" conta os discos com 0 cópia no fim do dia (a
+reposição automática chega na manhã seguinte).
 
 Perfis: `passivo` (só põe pra tocar), `fraco` (P ≈ 0,3, Médio), `medio` (P ≈ 0,5, Médio), `bom`
 (P ≈ 0,8, Médio), `expert` (P ≈ 0,8, Expert), `expert70` (P = 0,7, Expert), `perfeito_facil` (P = 1,
 Fácil). As partidas fictícias têm estrelas inteiras, como no Fretshift.
 
-Na etapa 2 todo o dinheiro do perfil "bom" sobra depois do dia 15: o catálogo de melhorias ainda é
-pequeno. A etapa 3 (estoque, neon, palco, cabine, cafeteria) precisa rodar o simulador de novo.
+Com o catálogo da etapa 3 o perfil "bom" compra tudo por volta do dia 20; depois disso o dinheiro
+sobra de novo. A biblioteca fictícia tem etiquetas (rápida, lenta, pesada, curta, longa, cantável) e
+guitarra, baixo e bateria em todas as dificuldades, mais voz nos discos cantáveis.

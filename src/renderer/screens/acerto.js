@@ -1,7 +1,9 @@
 // Fim do dia: antes do acerto (fechar o dia) e depois (o resumo, melhorias, abrir o próximo dia).
 
 import { button, el } from '../dom.js';
-import { PERIOD_NAMES, TITLE_NAMES, formatDelta, formatMoney, formatP, formatReputation } from '../text.js';
+import { EVENTS, PERIOD_NAMES, TITLE_NAMES, formatDelta, formatMoney, formatP, formatReputation, plural } from '../text.js';
+
+const tile = (label, value, className = null) => el('div', null, el('span', 'label', label), el('strong', className, value));
 
 export function render(root, state, ui) {
   root.replaceChildren(state.day.period === 'closing' ? beforeClose(state, ui) : afterClose(state, ui));
@@ -11,7 +13,11 @@ function presentationsTable(presentations, titleOf) {
   return el(
     'table',
     'day-table',
-    el('thead', null, el('tr', null, ...['Período', 'Disco', 'Desempenho', 'Visitantes', 'Vendas', 'Faturamento', 'Reputação'].map((h) => el('th', null, h)))),
+    el(
+      'thead',
+      null,
+      el('tr', null, ...['Período', 'Disco', 'Desempenho', 'Visitantes', 'Vendas', 'Faturamento', 'Gorjetas', 'Reputação'].map((h) => el('th', null, h))),
+    ),
     el(
       'tbody',
       null,
@@ -25,6 +31,7 @@ function presentationsTable(presentations, titleOf) {
           el('td', 'num', p.visitors),
           el('td', 'num', p.sales),
           el('td', 'num', formatMoney(p.revenue)),
+          el('td', 'num', p.tips ? formatMoney(p.tips) : ''),
           el('td', 'num', formatDelta(p.reputationDelta)),
         ),
       ),
@@ -37,20 +44,38 @@ function titleLookup(state) {
   return (id) => all.find((r) => r.id === id)?.title ?? 'Disco fora da biblioteca';
 }
 
+/** Pedidos do dia: atendidos e os que ficaram (o cliente exigente com prazo continua no quadro). */
+function requestsLine(done, missed) {
+  if (!done && !missed) return null;
+  const parts = [];
+  if (done) parts.push(plural(done, 'pedido atendido', 'pedidos atendidos'));
+  if (missed) parts.push(`${plural(missed, 'pedido ficou', 'pedidos ficaram')} sem atender`);
+  return el('p', 'muted', `${parts.join(' · ')}.`);
+}
+
 function beforeClose(state, ui) {
   const revenue = state.day.presentations.reduce((s, p) => s + p.revenue, 0);
+  const tips = state.day.presentations.reduce((s, p) => s + (p.tips ?? 0), 0);
+  const done = state.day.requests.filter((r) => r.done).length;
+  const missed = state.day.requests.filter((r) => r.open && (r.expiresDay === undefined || r.expiresDay <= state.day.number)).length;
+  const event = EVENTS[state.day.event];
   return el(
     'section',
     'screen narrow',
     el('h1', null, `Fim do dia ${state.day.number}`),
-    el('p', 'muted', 'A loja fechou as portas. Hora de fazer as contas.'),
+    el('p', 'muted', `A loja fechou as portas${event ? ` depois de um dia de ${event.name.toLowerCase()}` : ''}. Hora de fazer as contas.`),
     presentationsTable(state.day.presentations, titleLookup(state)),
     el(
       'div',
       'totals',
-      el('div', null, el('span', 'label', 'Faturamento'), el('strong', null, formatMoney(revenue))),
-      el('div', null, el('span', 'label', 'Aluguel'), el('strong', 'negative', `− ${formatMoney(state.rent)}`)),
+      tile('Faturamento', formatMoney(revenue)),
+      tips ? tile('Gorjetas', formatMoney(tips)) : null,
+      tile('Aluguel', `− ${formatMoney(state.rent)}`, 'negative'),
     ),
+    requestsLine(done, missed),
+    state.restock.auto
+      ? el('p', 'muted small', 'Reposição automática ligada: depois do aluguel, os discos vendidos hoje voltam a 3 cópias se o saldo pagar.')
+      : null,
     button('Fechar o dia', 'primary big', () => ui.act(window.api.day.close())),
   );
 }
@@ -65,18 +90,20 @@ function afterClose(state, ui) {
       el(
         'div',
         'totals',
-        el('div', null, el('span', 'label', 'Faturamento'), el('strong', null, formatMoney(s.revenue))),
-        el('div', null, el('span', 'label', 'Aluguel'), el('strong', 'negative', `− ${formatMoney(s.rent)}`)),
-        el('div', null, el('span', 'label', 'Lucro do dia'), el('strong', s.profit < 0 ? 'negative' : 'positive', formatMoney(s.profit))),
-        el('div', null, el('span', 'label', 'Saldo'), el('strong', s.money < 0 ? 'negative' : null, formatMoney(s.money))),
-        el(
-          'div',
-          null,
-          el('span', 'label', 'Reputação'),
-          el('strong', null, `${formatReputation(s.reputation)} (${formatDelta(s.reputationChange)})`),
-        ),
+        tile('Faturamento', formatMoney(s.revenue)),
+        s.tips ? tile('Gorjetas', formatMoney(s.tips)) : null,
+        tile('Aluguel', `− ${formatMoney(s.rent)}`, 'negative'),
+        s.restock?.cost ? tile('Reposição', `− ${formatMoney(s.restock.cost)}`, 'negative') : null,
+        tile('Lucro do dia', formatMoney(s.profit), s.profit < 0 ? 'negative' : 'positive'),
+        tile('Saldo', formatMoney(s.money), s.money < 0 ? 'negative' : null),
+        tile('Reputação', `${formatReputation(s.reputation)} (${formatDelta(s.reputationChange)})`),
       ),
+      s.requests ? requestsLine(s.requests.done, s.requests.missed) : null,
     );
+    if (s.restock?.cost) {
+      const copies = Object.values(s.restock.ordered).reduce((a, b) => a + b, 0);
+      children.push(el('p', 'muted', `Reposição automática: ${plural(copies, 'cópia chega', 'cópias chegam')} amanhã.`));
+    }
     if (s.title !== s.previousTitle) {
       children.push(el('p', 'title-up', `A loja agora é: ${TITLE_NAMES[s.title]}!`));
     }
@@ -89,6 +116,7 @@ function afterClose(state, ui) {
     el(
       'div',
       'actions row',
+      button('Estoque', 'ghost', () => ui.open('stock')),
       button('Ver melhorias', 'ghost', () => ui.openUpgrades()),
       button(`Abrir o dia ${nextDay}`, 'primary big', () => ui.act(window.api.day.open())),
     ),

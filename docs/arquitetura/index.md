@@ -58,7 +58,8 @@ vinilhero/
 ├── eslint.config.js
 ├── mkdocs.yml
 ├── docs/
-├── assets/                      ← sprites e sons
+├── build/icon.png               ← ícone do instalador (gerado por scripts/icone.js)
+├── scripts/icone.js
 ├── src/
 │   ├── core/                    ← puro: sem Electron, sem fs, sem Date.now(); 100% testável
 │   │   ├── balance.js           ← TODOS os números do design (pesos, preços, fatores)
@@ -70,7 +71,9 @@ vinilhero/
 │   │   ├── plays.js             ← partidas → histórico dos discos; resolve a apresentação pendente
 │   │   ├── shelves.js           ← seções, capacidade das prateleiras, depósito
 │   │   ├── requests.js          ← pedidos do dia (gerar e conferir se foram atendidos)
-│   │   ├── economy.js           ← aluguel, melhorias, estoque
+│   │   ├── events.js            ← evento do dia (sorteio, fator E, Noite de karaokê)
+│   │   ├── stock.js             ← estoque: encomendas, reposição automática, chegada
+│   │   ├── economy.js           ← aluguel, melhorias
 │   │   ├── day.js               ← máquina de estados do dia (abertura → … → acerto)
 │   │   └── saveFormat.js        ← formato do save, valores iniciais e migração de versão
 │   ├── bridge/                  ← tudo que toca no Fretshift
@@ -86,8 +89,11 @@ vinilhero/
 │   ├── renderer/
 │   │   ├── index.html
 │   │   ├── app.js               ← troca de telas
-│   │   ├── screens/             ← escolha.js, aguardando.js, resultado.js, acerto.js, melhorias.js
-│   │   └── scene/               ← loja.js (desenho), atores.js (bonecos), animacao.js (linha do tempo)
+│   │   ├── chart.js             ← gráfico de linha em SVG (Minha loja)
+│   │   ├── screens/             ← escolha.js (+ quadro.js: pedidos e evento), aguardando.js, resultado.js,
+│   │   │                          acerto.js, melhorias.js, estoque.js, minhaloja.js
+│   │   └── scene/               ← loja.js (desenho), atores.js (bonecos e balões), animacao.js (linha do
+│   │                              tempo), sons.js (efeitos sintetizados com WebAudio)
 │   └── cli/
 │       └── simular.js           ← simulador de balanceamento (npm run simular)
 └── test/

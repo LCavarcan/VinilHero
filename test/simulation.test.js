@@ -112,15 +112,15 @@ test('compras: preço na faixa do arquétipo, disco da mesma seção, faturament
 
 test('colecionador só aparece com reputação 15', () => {
   assert.equal(customerMix({ difficulty: 'Expert', period: 'night', reputation: 14 }).collector, undefined);
-  assert.equal(customerMix({ difficulty: 'Expert', period: 'night', reputation: 15 }).collector, 5 * 2.5);
+  assert.equal(customerMix({ difficulty: 'Expert', period: 'night', reputation: 15 }).collector, 5 * 2.2);
 });
 
 test('mistura: Difícil tem metade do ajuste do Expert; Médio não muda', () => {
   const hard = customerMix({ difficulty: 'Hard', period: 'afternoon', reputation: 20 });
   assert.equal(hard.musician, 10 * 1.25);
-  assert.equal(hard.collector, 5 * 1.75);
+  assert.equal(hard.collector, 5 * 1.6);
   const medium = customerMix({ difficulty: 'Medium', period: 'afternoon', reputation: 20 });
-  assert.deepEqual(medium, { curious: 50, sectionFan: 25, musician: 10, collector: 5 });
+  assert.deepEqual(medium, { curious: 50, sectionFan: 25, musician: 10, collector: 5, karaoke: 8 });
 });
 
 test('sem seções com discos, não aparece fã de seção', () => {
@@ -140,4 +140,78 @@ test('reputação: crítico multiplica, full combo soma, ganho reduzido perto do
   // no topo, não sobe mais
   assert.equal(reputationDelta({ P: 1, mode: 'play', reputation: 100 }) > 0, true);
   assert.equal(reputationDelta({ P: 1, mode: 'play', reputation: R.damping }), 0);
+});
+
+test('crítico multiplica a variação da reputação nos dois sentidos', () => {
+  const R = BALANCE.reputation;
+  const good = { P: 0.8, mode: 'play', reputation: 0 };
+  const bad = { P: 0.1, mode: 'play', reputation: 0 };
+  const near = (a, b) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≠ ${b}`);
+  near(reputationDelta({ ...good, critic: true }), reputationDelta(good) * R.criticFactor);
+  near(reputationDelta({ ...bad, critic: true }), reputationDelta(bad) * R.criticFactor);
+  assert.ok(reputationDelta({ ...bad, critic: true }) < reputationDelta(bad));
+});
+
+test('crítico: reputação 30, no máximo um por dia', () => {
+  assert.equal(customerMix({ difficulty: 'Medium', period: 'night', reputation: 29 }).critic, undefined);
+  assert.equal(customerMix({ difficulty: 'Medium', period: 'night', reputation: 30 }).critic, 2);
+  assert.equal(customerMix({ difficulty: 'Medium', period: 'night', reputation: 30, criticToday: true }).critic, undefined);
+  const crowd = drawVisitors(mulberry32(1), 300, { curious: 1, critic: 1000 }, ['rock']);
+  assert.equal(crowd.filter((v) => v.archetype === 'critic').length, 1);
+  // depois que ele veio, a simulação não sorteia outro no mesmo dia
+  for (let seed = 0; seed < 30; seed++) {
+    const s = shop({ reputation: 80 });
+    const seen = { ...s, day: { ...s.day, criticSeen: true } };
+    const result = resolvePresentation({ state: seen, record, sectionRecords: others, play: play(), mode: 'play', rng: mulberry32(seed) });
+    assert.ok(!result.visitors.some((v) => v.archetype === 'critic'));
+  }
+});
+
+test('letreiro neon soma 3 à base de visitantes', () => {
+  const s = shop();
+  const neon = { ...s, upgrades: { ...s.upgrades, neon: 1 } };
+  const count = (state) => resolvePresentation({ state, record, play: play(), mode: 'play', rng: mulberry32(1) }).visitors.length;
+  const P = run().P;
+  assert.equal(count(neon), visitorCount({ P, difficulty: 'Expert', reputation: 20, period: 'afternoon', baseBonus: 3 }));
+  assert.ok(count(neon) > count(s));
+});
+
+test('cafeteria: alguns compradores levam um segundo disco', () => {
+  const s = shop({ reputation: 80 });
+  const cafe = { ...s, upgrades: { ...s.upgrades, cafe: 1 } };
+  let buyers = 0;
+  let seconds = 0;
+  for (let seed = 0; seed < 200; seed++) {
+    const stocked = others.map((r) => ({ ...r, stock: 50 }));
+    const result = resolvePresentation({ state: cafe, record: stocked[0], sectionRecords: stocked, play: play(), mode: 'play', rng: mulberry32(seed) });
+    buyers += result.visitors.filter((v) => v.bought).length;
+    seconds += result.visitors.filter((v) => v.extra).length;
+    assert.equal(result.revenue, result.visitors.reduce((sum, v) => sum + v.price + (v.extraPrice ?? 0), 0));
+    assert.equal(result.sales, result.visitors.filter((v) => v.bought).length + result.visitors.filter((v) => v.extra).length);
+  }
+  const rate = seconds / buyers;
+  assert.ok(rate > 0.11 && rate < 0.19, `segundo disco: ${rate}`);
+});
+
+test('discos dominados vendem sozinhos: R$ 60, no máximo 4 por período, com estoque', () => {
+  const mastered = Array.from({ length: 12 }, (_, i) => ({ id: `m${i}`, section: 'pop', tags: [], mastered: true, stock: 3 }));
+  let total = 0;
+  for (let seed = 0; seed < 100; seed++) {
+    const result = resolvePresentation({
+      state: shop(),
+      record,
+      sectionRecords: [record],
+      shelfRecords: [record, ...mastered],
+      play: play(),
+      mode: 'play',
+      rng: mulberry32(seed),
+    });
+    assert.ok(result.soloSales.length <= 4);
+    assert.ok(result.soloSales.every((x) => x.price === 60));
+    total += result.soloSales.length;
+  }
+  assert.ok(total / 100 > 2.5, `média ${total / 100}`);
+  const soldOut = mastered.map((r) => ({ ...r, stock: 0 }));
+  const none = resolvePresentation({ state: shop(), record, shelfRecords: [record, ...soldOut], play: play(), mode: 'play', rng: mulberry32(1) });
+  assert.deepEqual(none.soloSales, []);
 });

@@ -1,5 +1,6 @@
 // A loja vista de lado, em pixel art (320 × 120, ampliada pela tela):
-// porta à esquerda, vitrine, prateleiras no meio, caixa de som, caixa e toca-discos à direita.
+// porta à esquerda, vitrine, cabine, prateleiras no meio (com o neon em cima e o palco na frente),
+// caixa de som, caixa e toca-discos à direita (com a cafeteria na parede).
 
 import { COUNTER_X, DOOR_X, SCENE } from './animacao.js';
 
@@ -22,6 +23,13 @@ const C = {
   speaker: '#1d1a26',
   cone: '#3b3650',
   lamp: '#f1c40f',
+  gold: '#f1c40f',
+  neon: '#ff4fa3',
+  neonGlow: '#ff4fa355',
+  rain: '#8cc6d9',
+  stage: '#5a3a26',
+  stageTop: '#8b5a3c',
+  coffee: '#6f4e37',
 };
 
 const SPINES = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f', '#9b59b6', '#e67e22', '#1abc9c', '#ecf0f1', '#e84393'];
@@ -45,36 +53,126 @@ function background(ctx) {
   }
 }
 
-function door(ctx) {
+function door(ctx, rain, t) {
   const x = DOOR_X - 12;
   rect(ctx, C.frame, x - 2, 44, 28, SCENE.floor - 44);
   rect(ctx, C.street, x, 46, 24, SCENE.floor - 46);
   rect(ctx, C.glass, x + 3, 50, 18, 22);
   rect(ctx, C.glassShine, x + 4, 51, 2, 8);
+  if (rain) {
+    // gotas escorrendo no vidro da porta
+    for (let i = 0; i < 6; i++) {
+      const y = 50 + ((t * 30 + i * 7) % 20);
+      rect(ctx, C.rain, x + 4 + i * 3, y, 1, 2);
+    }
+  }
   rect(ctx, C.metal, x + 19, 74, 2, 4);
   // placa "aberto"
   rect(ctx, '#27ae60', x + 5, 38, 14, 5);
 }
 
-function shopWindow(ctx, level) {
+function shopWindow(ctx, level, mastered, rain, t) {
   if (!level) return;
-  const x = 44;
-  const w = level >= 2 ? 52 : 38;
+  const x = 40;
+  const w = level >= 2 ? 46 : 38;
   rect(ctx, C.frame, x - 2, 40, w + 4, 42);
   rect(ctx, C.glass, x, 42, w, 38);
   rect(ctx, C.glassShine, x + 2, 44, 2, 12);
   rect(ctx, C.woodDark, x, 72, w, 8);
   // discos expostos
+  // discos expostos; os dominados (até um por lugar) aparecem dourados
   const count = level >= 2 ? 4 : 3;
   for (let i = 0; i < count; i++) {
-    const cx = x + 8 + i * 12;
-    rect(ctx, SPINES[i * 2], cx - 5, 58, 10, 10);
+    const cx = x + 7 + i * 10;
+    rect(ctx, i < mastered ? C.gold : SPINES[i * 2], cx - 4, 58, 8, 10);
     ctx.fillStyle = C.vinyl;
     ctx.beginPath();
-    ctx.arc(cx + 2, 63, 4, 0, Math.PI * 2);
+    ctx.arc(cx + 2, 63, 3.5, 0, Math.PI * 2);
     ctx.fill();
   }
   if (level >= 2) rect(ctx, C.lamp, x, 40, w, 2);
+  if (rain) {
+    for (let i = 0; i < 8; i++) {
+      const y = 42 + ((t * 34 + i * 11) % 36);
+      rect(ctx, C.rain, x + 3 + i * 5, y, 1, 2);
+    }
+  }
+}
+
+/** Cabine de audição: uma cabine com vidro e fones pendurados. */
+function booth(ctx) {
+  const x = 88;
+  rect(ctx, C.frame, x, 36, 20, SCENE.floor - 36);
+  rect(ctx, C.glass, x + 3, 40, 14, 24);
+  rect(ctx, C.glassShine, x + 4, 41, 1, 8);
+  // fones
+  rect(ctx, '#e84393', x + 7, 52, 6, 1);
+  rect(ctx, '#e84393', x + 6, 53, 2, 3);
+  rect(ctx, '#e84393', x + 12, 53, 2, 3);
+  rect(ctx, C.metal, x + 9, 64, 2, SCENE.floor - 64);
+}
+
+/** Letreiro neon "VINIL" na parede, piscando de leve. */
+function neon(ctx, t) {
+  const on = Math.sin(t * 3) > -0.9;
+  const x = 150;
+  const y = 12;
+  // letras 3×5 em pixels: V I N I L
+  const LETTERS = [
+    ['1.1', '1.1', '1.1', '1.1', '.1.'],
+    ['1', '1', '1', '1', '1'],
+    ['1..1', '11.1', '1.11', '1..1', '1..1'],
+    ['1', '1', '1', '1', '1'],
+    ['1..', '1..', '1..', '1..', '111'],
+  ];
+  if (on) rect(ctx, C.neonGlow, x - 3, y - 3, 27, 11);
+  let cx = x;
+  for (const rows of LETTERS) {
+    rows.forEach((row, ry) => {
+      [...row].forEach((c, rx) => {
+        if (c === '1') rect(ctx, on ? C.neon : '#7a2a52', cx + rx, y + ry, 1, 1);
+      });
+    });
+    cx += rows[0].length + 2;
+  }
+}
+
+/** Palco baixo na frente das prateleiras, com pedestal de microfone. */
+function stage(ctx) {
+  // no chão, na frente das prateleiras (os clientes passam por cima)
+  const x = 136;
+  const w = 78;
+  const top = SCENE.floor + 1;
+  rect(ctx, C.stage, x, top, w, 7);
+  rect(ctx, C.stageTop, x, top, w, 2);
+  for (let i = 6; i < w; i += 12) rect(ctx, C.woodDark, x + i, top + 3, 1, 4);
+  // pedestal do microfone e um pequeno refletor
+  rect(ctx, C.metal, x + w - 12, top - 20, 1, 21);
+  rect(ctx, '#2c3e50', x + w - 13, top - 22, 3, 3);
+  rect(ctx, C.lamp, x + 4, top - 3, 4, 3);
+}
+
+/** Cafeteria: uma prateleira na parede com a máquina de café e xícaras, e a placa. */
+function cafe(ctx, t) {
+  const x = 266;
+  rect(ctx, C.woodDark, x, 46, 40, 2);
+  rect(ctx, C.metal, x + 4, 34, 10, 12);
+  rect(ctx, '#2c3e50', x + 6, 37, 6, 3);
+  for (let i = 0; i < 3; i++) rect(ctx, '#ecf0f1', x + 18 + i * 6, 42, 4, 4);
+  // vapor
+  const k = Math.floor(t * 4) % 3;
+  rect(ctx, '#ffffff55', x + 8 + k, 30 - k, 1, 2);
+  rect(ctx, C.coffee, x + 2, 26, 22, 6);
+  rect(ctx, '#ecf0f1', x + 4, 28, 18, 2);
+}
+
+/** Moldura dourada da loja Lendária. */
+function legendaryFrame(ctx) {
+  const { width, height } = SCENE;
+  rect(ctx, C.gold, 0, 0, width, 2);
+  rect(ctx, C.gold, 0, height - 2, width, 2);
+  rect(ctx, C.gold, 0, 0, 2, height);
+  rect(ctx, C.gold, width - 2, 0, 2, height);
 }
 
 function shelf(ctx, x, w, seed) {
@@ -96,7 +194,7 @@ function speaker(ctx, level, t) {
   const pulse = Math.sin(t * 9) > 0.6 ? 1 : 0;
   const sizes = [null, [14, 22], [16, 30], [18, 36]];
   const [w, h] = sizes[level];
-  const x = 246;
+  const x = 238;
   const y = SCENE.floor - h;
   rect(ctx, C.speaker, x, y, w, h);
   const coneR = Math.floor(w / 3) + pulse;
@@ -132,14 +230,24 @@ function counter(ctx, t) {
   rect(ctx, C.metal, x + 20, 58, 1, 5);
 }
 
-/** Desenha a loja (sem os clientes). `t` em segundos anima o toca-discos e a caixa de som. */
-export function drawShop(ctx, upgrades, t = 0) {
+/**
+ * Desenha a loja (sem os clientes). `t` em segundos anima o toca-discos, a caixa de som, o neon e a
+ * chuva. `look`: { upgrades, event, mastered (discos dominados), legendary }.
+ */
+export function drawShop(ctx, look, t = 0) {
+  const { upgrades, event = null, mastered = 0, legendary = false } = look;
+  const rain = event === 'rain';
   ctx.imageSmoothingEnabled = false;
   background(ctx);
-  door(ctx);
-  shopWindow(ctx, upgrades.window ?? 0);
-  shelf(ctx, 108, 62, 0);
-  shelf(ctx, 178, 62, 4);
+  door(ctx, rain, t);
+  shopWindow(ctx, upgrades.window ?? 0, mastered, rain, t);
+  if (upgrades.booth) booth(ctx);
+  shelf(ctx, 112, 58, 0);
+  shelf(ctx, 174, 58, 4);
+  if (upgrades.neon) neon(ctx, t);
+  if (upgrades.stage) stage(ctx);
   speaker(ctx, upgrades.sound ?? 0, t);
+  if (upgrades.cafe) cafe(ctx, t);
   counter(ctx, t);
+  if (legendary) legendaryFrame(ctx);
 }

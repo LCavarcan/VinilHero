@@ -164,6 +164,9 @@ gameAction('day:open', () => game.openDay());
 gameAction('day:seen', () => game.seen());
 gameAction('shop:buy', ({ upgradeId, section }) => game.buy({ upgradeId, section }));
 gameAction('record:move', ({ songId, section }) => game.moveRecord({ songId, section }));
+gameAction('stock:restock', ({ songId, copies }) => game.restock({ songId, copies }));
+gameAction('stock:auto', ({ auto }) => game.setAutoRestock({ auto }));
+gameAction('stock:top-up', () => game.topUp());
 ipcMain.handle('fretshift:pick-dir', async () => {
   const result = await dialog.showOpenDialog(win, {
     title: 'Escolha a pasta de dados do Fretshift',

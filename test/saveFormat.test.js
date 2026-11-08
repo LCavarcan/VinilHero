@@ -34,3 +34,26 @@ test('validate aponta os campos com problema', () => {
   assert.deepEqual(validate({ ...save, pending: { songId: 'ab' } }), ['pending']);
   assert.ok(validate(null).length > 5);
 });
+
+test('migração para a versão 2: todo disco começa com 3 cópias; melhorias e dia ganham os campos novos', () => {
+  const v1 = {
+    ...newSave(1, NOW),
+    version: 1,
+    upgrades: { sound: 1, window: 0, extraShelves: { rock: 1 } },
+    records: { ab: { section: 'rock', timesPlayed: 2, best: {}, mastered: false, masteredAt: null } },
+    day: { number: 4, period: 'afternoon', event: null, requests: [], presentations: [], playedToday: { ab: 1 } },
+  };
+  delete v1.restock;
+  const v2 = migrate(structuredClone(v1));
+  assert.equal(v2.version, 2);
+  assert.deepEqual(validate(v2), []);
+  assert.equal(v2.records.ab.stock, 3);
+  assert.equal(v2.records.ab.timesPlayed, 2);
+  assert.deepEqual(v2.upgrades, { sound: 1, neon: 0, window: 0, booth: 0, stage: 0, cafe: 0, extraShelves: { rock: 1 } });
+  assert.deepEqual(v2.restock, { orders: {}, auto: false });
+  assert.equal(v2.day.number, 4);
+  assert.equal(v2.day.period, 'afternoon');
+  assert.deepEqual(v2.day.playedToday, { ab: 1 });
+  assert.deepEqual(v2.day.sold, {});
+  assert.equal(v2.day.prepared, false);
+});

@@ -4,14 +4,34 @@
 import { BALANCE } from './balance.js';
 
 export const SAVE_FORMAT = 'vinilhero-save';
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 export const PERIODS = ['morning', 'afternoon', 'night'];
 // depois da noite o dia fica "closing" (falta o acerto) e, depois do acerto, "closed"
 export const DAY_PHASES = [...PERIODS, 'closing', 'closed'];
 
-/** Dia novo, na manhã. */
+/**
+ * Dia novo, na manhã. `prepared` fica falso até o evento e os pedidos serem sorteados (precisa da
+ * biblioteca: ver prepareDay em day.js).
+ */
 export function newDay(number) {
-  return { number, period: 'morning', event: null, requests: [], presentations: [], playedToday: {} };
+  return {
+    number,
+    period: 'morning',
+    prepared: false,
+    event: null,
+    requests: [],
+    presentations: [],
+    playedToday: {},
+    // cópias vendidas hoje por disco (para a reposição automática) e se já veio um crítico
+    sold: {},
+    criticSeen: false,
+    arrivals: {},
+  };
+}
+
+/** Melhorias zeradas. */
+export function noUpgrades() {
+  return { sound: 0, neon: 0, window: 0, booth: 0, stage: 0, cafe: 0, extraShelves: {} };
 }
 
 /** Loja nova. `seed` é sorteado uma vez por quem chama; `now` é a hora em ISO. */
@@ -24,7 +44,9 @@ export function newSave(seed, now) {
     shop: { name: 'VinilHero', money: BALANCE.start.money, reputation: BALANCE.start.reputation },
     day: newDay(1),
     pending: null,
-    upgrades: { sound: 0, window: 0, extraShelves: {} },
+    upgrades: noUpgrades(),
+    // reposição de estoque: cópias encomendadas (chegam na abertura do dia seguinte) e automática
+    restock: { orders: {}, auto: false },
     records: {},
     processedPlays: [],
     historyImported: false,
@@ -37,8 +59,25 @@ export function newSave(seed, now) {
 export function migrate(save) {
   if (save?.format !== SAVE_FORMAT) throw new Error('Arquivo não é um save do VinilHero');
   if (save.version > SAVE_VERSION) throw new Error('Save criado por uma versão mais nova do VinilHero');
-  // versão 1 é a atual: nada a fazer ainda (a etapa 3 acrescenta a migração para a 2)
-  return save;
+  let s = save;
+  if (s.version === 1) s = toVersion2(s);
+  return s;
+}
+
+/** Versão 2 (etapa 3): estoque, reposição, melhorias novas e o dia com pedidos e eventos. */
+function toVersion2(save) {
+  const records = Object.fromEntries(
+    Object.entries(save.records ?? {}).map(([id, r]) => [id, { stock: BALANCE.stock.initial, ...r }]),
+  );
+  return {
+    ...save,
+    version: 2,
+    upgrades: { ...noUpgrades(), ...save.upgrades },
+    restock: save.restock ?? { orders: {}, auto: false },
+    records,
+    // o dia em andamento ganha os campos novos; pedidos e evento são sorteados na próxima abertura do jogo
+    day: { ...newDay(save.day.number), ...save.day, prepared: false },
+  };
 }
 
 const isNumber = (x) => typeof x === 'number' && Number.isFinite(x);
@@ -57,7 +96,9 @@ export function validate(save) {
       Number.isInteger(save.day.number) &&
       DAY_PHASES.includes(save.day.period) &&
       Array.isArray(save.day.presentations) &&
-      isObject(save.day.playedToday),
+      Array.isArray(save.day.requests) &&
+      isObject(save.day.playedToday) &&
+      isObject(save.day.sold),
     'day',
   );
   check(
@@ -66,6 +107,7 @@ export function validate(save) {
     'pending',
   );
   check(isObject(save?.upgrades) && isObject(save.upgrades.extraShelves), 'upgrades');
+  check(isObject(save?.restock) && isObject(save.restock.orders), 'restock');
   check(isObject(save?.records), 'records');
   check(Array.isArray(save?.processedPlays), 'processedPlays');
   check(isObject(save?.stats), 'stats');

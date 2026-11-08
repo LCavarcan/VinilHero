@@ -25,9 +25,32 @@ function hash01(text) {
 
 const walk = (t0, x0, x1) => ({ t0, t1: t0 + Math.abs(x1 - x0) / WALK, x0, x1 });
 
-/** Monta a linha do tempo: atores (com segmentos de movimento) e eventos (entrada, venda). */
+const BALLOON = 1.1; // segundos com o balão na cabeça
+
+/**
+ * Balão do visitante no fim da olhada na prateleira: 'buy' (vou levar), 'sold-out' (esgotou),
+ * 'music' (cantando junto), 'wow' (que solo!), 'hmm' (não se animou) ou null.
+ */
+export function balloonFor(visitor, result, key) {
+  const great = result.mode === 'play' && !result.ignored && result.P >= 0.85;
+  if (visitor.noStock) return 'sold-out';
+  if (visitor.archetype === 'karaoke' && result.play?.instrument === 'vocals' && !result.ignored) return 'music';
+  if (visitor.bought) return visitor.archetype === 'musician' && great ? 'wow' : 'buy';
+  if (visitor.archetype === 'critic') return 'hmm';
+  // nem todo mundo que sai fala alguma coisa
+  return hash01(`${key}:h`) < 0.35 ? (great ? 'wow' : 'hmm') : null;
+}
+
+/**
+ * Monta a linha do tempo: atores (com segmentos de movimento e balão) e eventos (entrada, venda).
+ * As vendas sozinhas dos discos dominados viram colecionadores de passagem no fim (não contam como
+ * visitantes).
+ */
 export function buildTimeline(result) {
-  const visitors = result.visitors ?? [];
+  const visitors = [
+    ...(result.visitors ?? []),
+    ...(result.soloSales ?? []).map((x) => ({ archetype: 'collector', bought: x.songId, price: x.price, solo: true })),
+  ];
   const gap = visitors.length ? Math.min(MAX_GAP, ENTRY_WINDOW / visitors.length) : 0;
   const actors = [];
   const events = [];
@@ -41,19 +64,22 @@ export function buildTimeline(result) {
     let t = segments[0].t1 + browse;
     // parado olhando a prateleira
     segments.push({ t0: segments[0].t1, t1: t, x0: shelfX, x1: shelfX, browsing: true });
-    events.push({ t: t0, type: 'enter', actor: i });
+    events.push({ t: t0, type: 'enter', actor: i, solo: !!v.solo });
+    const icon = balloonFor(v, result, key);
+    const balloon = icon ? { icon, t0: t - 0.5, t1: t - 0.5 + BALLOON } : null;
     if (v.bought) {
       const toCounter = walk(t, shelfX, COUNTER_X);
       segments.push(toCounter);
       segments.push({ t0: toCounter.t1, t1: toCounter.t1 + PAY, x0: COUNTER_X, x1: COUNTER_X, paying: true });
-      events.push({ t: toCounter.t1 + PAY / 2, type: 'sale', actor: i, price: v.price });
+      // com a cafeteria, o segundo disco sai junto
+      events.push({ t: toCounter.t1 + PAY / 2, type: 'sale', actor: i, price: v.price + (v.extraPrice ?? 0), copies: v.extra ? 2 : 1 });
       t = toCounter.t1 + PAY;
       segments.push(walk(t, COUNTER_X, DOOR_X));
     } else {
       events.push({ t, type: 'leave', actor: i });
       segments.push(walk(t, shelfX, DOOR_X));
     }
-    actors.push({ ...v, index: i, segments, start: t0, end: segments.at(-1).t1 });
+    actors.push({ ...v, index: i, segments, balloon, start: t0, end: segments.at(-1).t1 });
   });
 
   events.sort((a, b) => a.t - b.t);
@@ -83,9 +109,9 @@ export function countersAt(timeline, t) {
   let revenue = 0;
   for (const e of timeline.events) {
     if (e.t > t) break;
-    if (e.type === 'enter') visitors++;
+    if (e.type === 'enter' && !e.solo) visitors++;
     if (e.type === 'sale') {
-      sales++;
+      sales += e.copies ?? 1;
       revenue += e.price;
     }
   }

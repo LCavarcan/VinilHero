@@ -90,14 +90,25 @@ Os números de mistura e preço ficam em [Progressão e economia](progressao.md)
 
 ### Pedidos do dia
 
-Na abertura, 2 ou 3 clientes deixam um pedido no quadro. Atender um pedido dá gorjeta e reputação.
-Exemplos (todos geráveis a partir das etiquetas e da partida):
+Na abertura, 2 ou 3 clientes deixam um pedido no quadro (`src/core/requests.js`). Só saem pedidos que
+algum disco da prateleira consegue atender. Atender dá gorjeta e +0,5 de reputação, e só vale
+**tocando** ("só pôr pra tocar" não atende, [D-14](../decisoes/index.md#d-14-pedidos-so-valem-tocando)).
+Uma apresentação pode atender mais de um pedido.
 
-- "Algo agitado pra animar a tarde": disco `rapida` à tarde.
-- "Quero ouvir uma bateria bem tocada": partida de bateria com P ≥ 0,7.
-- "Alguma coisa pra cantar junto": partida de voz em disco `cantavel`.
-- "Um clássico do Brasil": disco da seção Brasil.
-- "Me impressiona": qualquer disco com 4 estrelas ou mais em Difícil/Expert.
+| Pedido | Atende com | Gorjeta |
+|---|---|---|
+| "Algo agitado pra animar a tarde" / "…pra noite" | disco `rapida` no período pedido | R$ 40 |
+| "Algo calmo pra começar a manhã" | disco `lenta` de manhã | R$ 40 |
+| "Quero ouvir algo pesado" | disco `pesada` | R$ 40 |
+| "Tem alguma coisa de Brasil?" | disco da seção | R$ 40 |
+| "Alguma coisa pra cantar junto" | partida de voz em disco `cantavel` | R$ 50 |
+| "Quero ouvir uma bateria bem tocada" | partida do instrumento com P ≥ 0,7 | R$ 60 |
+| "Me impressiona!" | 4 estrelas ou mais em Difícil/Expert | R$ 60 |
+| cliente exigente ([evento](eventos.md#cliente-exigente)) | o disco dele, full combo em Médio+ | R$ 300 (+3 de reputação) |
+
+Os tipos de pedido têm peso igual no sorteio (seção, que tem seis variações, não domina o quadro). Na
+escolha, passar o mouse ou clicar num pedido destaca os discos que servem; os pedidos específicos
+também marcam os discos com o selo "pedido".
 
 ## Repetição
 

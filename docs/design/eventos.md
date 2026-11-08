@@ -1,7 +1,9 @@
 # Eventos
 
-Eventos mudam um período ou um dia inteiro. Na etapa 3 eles são sorteados na abertura do dia (no
-máximo um por dia) entre os já liberados; o show da banda é sempre escolha do jogador.
+Eventos mudam um período ou um dia inteiro. Eles são sorteados na abertura do dia: **50% de chance**
+de haver evento, e então um dos já liberados, com peso igual
+([D-15](../decisoes/index.md#d-15-chance-de-evento)). No máximo um por dia; o sorteio usa a semente do
+dia, então fechar e abrir o jogo não muda o evento. O show da banda é sempre escolha do jogador.
 
 ## Show da banda
 
@@ -24,7 +26,8 @@ máximo um por dia) entre os já liberados; o show da banda é sempre escolha do
 
 - Só partidas de **voz** contam na noite; outras viram "só pôr pra tocar".
 - Karaokeiros ×3 na mistura, `E = 1,2`.
-- Atender com um disco `cantavel` conta como pedido atendido.
+- Atender com um disco `cantavel` conta como pedido atendido: o evento põe no quadro o pedido "bora
+  cantar!" (voz em disco cantável, à noite), e nesse dia não sai o pedido comum de cantar junto.
 
 ## Hora do rush
 
@@ -37,9 +40,11 @@ máximo um por dia) entre os já liberados; o show da banda é sempre escolha do
 
 **Requer:** reputação 30. **Quando:** sorteado; aparece no quadro de pedidos.
 
-- Pede um disco **específico** da biblioteca com **full combo** em Médio ou acima.
-- Paga R$ 300 e dá +3 de reputação. Sem full combo, ele vai embora sem comprar (sem perda).
-- Fica no quadro por 3 dias.
+- Pede um disco **específico** da prateleira (que tenha chart em Médio ou acima) com **full combo**
+  em Médio ou acima.
+- Paga R$ 300 e dá +3 de reputação. Tocar o disco dele sem atender faz ele ir embora sem comprar
+  (sem perda).
+- Fica no quadro por 3 dias (o dia em que chegou e mais dois). Enquanto ele estiver lá, não vem outro.
 
 ## Dia de chuva
 

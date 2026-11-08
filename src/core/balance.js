@@ -40,7 +40,7 @@ export const BALANCE = deepFreeze({
       curious: { weight: 50, easy: 1.4, expert: 0.8 },
       sectionFan: { weight: 25 },
       musician: { weight: 10, easy: 0.6, expert: 1.5 },
-      collector: { weight: 5, easy: 0.3, expert: 2.5, minReputation: 15 },
+      collector: { weight: 5, easy: 0.3, expert: 2.2, minReputation: 15 },
       karaoke: { weight: 8, night: 2 },
       critic: { weight: 2, minReputation: 30, maxPerDay: 1 },
     },
@@ -65,10 +65,10 @@ export const BALANCE = deepFreeze({
     scale: 2.7,
     criticFactor: 3,
     fullComboBonus: 1.5,
-    requestBonus: 1,
+    requestBonus: 0.5,
     // ganho positivo × (1 − reputação / damping) ^ dampingPower
-    damping: 120,
-    dampingPower: 2,
+    damping: 122,
+    dampingPower: 3,
     min: 0,
     max: 100,
   },
@@ -91,7 +91,33 @@ export const BALANCE = deepFreeze({
   collectorMasteredFactor: 1.5,
 
   rent: { base: 120, perUpgrade: 15 },
+  // reposição automática: completa até autoRestockCopies cópias de cada disco vendido no dia
   stock: { initial: 3, copyPrice: 15, autoRestockCopies: 3 },
+
+  // ---------- Pedidos do dia (docs/design/index.md#pedidos-do-dia) ----------
+  requests: {
+    perDay: [2, 3],
+    // gorjeta (R$) e reputação por pedido atendido
+    tip: { tag: 40, section: 40, sing: 50, instrument: 60, impress: 60, demanding: 300 },
+    reputation: { demanding: 3 },
+    instrumentMinP: 0.7,
+    impressMinStars: 4,
+    // períodos em que cada etiqueta pode ser pedida (sem período: vale o dia todo)
+    tagPeriods: { rapida: ['afternoon', 'night'], lenta: ['morning'], pesada: null },
+    // cliente exigente: full combo em Médio ou acima, fica no quadro por 3 dias
+    demandingDifficulties: ['Medium', 'Hard', 'Expert'],
+    demandingDays: 3,
+  },
+
+  // ---------- Eventos (docs/design/eventos.md) ----------
+  events: {
+    // chance de haver evento no dia (no máximo um), sorteado entre os liberados com peso igual
+    chance: 0.5,
+    rush: { period: 'afternoon', short: 1.4, other: 0.8 },
+    rain: { morning: 0.7, afternoon: 0.7, night: 1.2 },
+    karaoke: { period: 'night', E: 1.2, karaokeFactor: 3 },
+    demanding: { minReputation: 30 },
+  },
 
   upgrades: {
     sound: { prices: [400, 1000, 2500] },

@@ -139,6 +139,62 @@ página).
 - **Consequência:** tocar muito bem rende ~3× tocar muito mal numa apresentação (antes ~5×); a
   diferença cresce com os dias pela reputação. O pilar 1 da [Visão](../index.md) foi atualizado.
 
+### D-14 · Pedidos só valem tocando
+
+- **Contexto:** o design dizia que atender um pedido dá gorjeta e reputação, mas não dizia se "só
+  pôr pra tocar" um disco rápido atende "algo agitado". Também não tinha os valores das gorjetas.
+- **Alternativas:** qualquer apresentação atende (pedidos de etiqueta e seção virariam dinheiro de
+  graça para quem não joga).
+- **Escolha:** só apresentação **tocada** atende (e, na Noite de karaokê, só a de voz). Gorjetas:
+  etiqueta e seção R$ 40, cantar junto R$ 50, instrumento e "me impressiona" R$ 60, cliente exigente
+  R$ 300. Uma apresentação pode atender mais de um pedido. Só sai pedido que algum disco da prateleira
+  consegue atender.
+- **Por quê:** segue o pilar de [D-07](#d-07-nao-jogar-nao-pune): não jogar não pune, mas também não
+  avança. O pedido vira um motivo para escolher um disco diferente, não uma renda fixa.
+
+### D-15 · Chance de evento
+
+- **Contexto:** "no máximo um evento por dia" pedia uma chance de não haver evento.
+- **Escolha:** 50% de chance de evento no dia; os liberados têm peso igual.
+- **Consequência:** no começo só a Hora do rush e o Dia de chuva estão liberados (karaokê pede a
+  cabine; cliente exigente, reputação 30). O simulador mostra ~1,9 evento diferente na 1ª semana; a
+  meta "3 eventos diferentes numa semana" do roteiro só fecha numa semana depois da cabine ou da
+  reputação 30.
+- :material-help-circle: **A revisar** depois de jogar: se o começo ficar repetitivo, liberar o
+  cliente exigente mais cedo (reputação 15) ou criar um evento sem requisito.
+
+### D-16 · Reposição automática no save
+
+- **Contexto:** a arquitetura punha a reposição automática no `settings.json`.
+- **Escolha:** fica no save (`restock.auto`).
+- **Por quê:** ela gasta o dinheiro da loja, então é uma decisão de jogo (e uma loja copiada para
+  outro PC leva junto). O simulador também precisa dela para calcular o lucro com estoque.
+
+### D-17 · Calibragem da etapa 3
+
+- **Contexto:** com pedidos, críticos e estoque, o simulador mostrou: reputação 50 no dia 13,4 (meta
+  20–30), palco possível no dia 5,4 (meta 6–8) e Expert lucrando ×1,70 o Médio (meta ×1,2–1,6). Os
+  lucros do Médio continuaram no alvo, porque o custo da reposição quase empatou com as gorjetas.
+- **Achados:**
+    - Os pedidos atendidos (~1,7 por dia para quem toca bem) somavam quase 50% à reputação do dia; o
+      crítico (×3 também para cima) adiantava mais 3 dias.
+    - Reduzir o ganho por desempenho não resolvia: o bônus dos pedidos é fixo por dia. O que segura o
+      meio do caminho é a curva perto do topo. Com o expoente 3, 25 continua em ~1 semana, 50 vai para
+      ~3 semanas e 75 continua alcançável (~8 semanas).
+    - O Expert ganhou com o estoque: a cópia custa o mesmo para uma venda de R$ 45 e para uma de
+      colecionador de R$ 120. E "me impressiona" só o Expert atende.
+- **Mudanças** (`src/core/balance.js`):
+
+    | Número | Antes | Depois |
+    |---|---|---|
+    | reputação por pedido atendido | +1 | +0,5 (cliente exigente: +3) |
+    | redução do ganho perto do topo | `× (1 − r/120)²` | `× (1 − r/122)³` |
+    | colecionador em Expert (Difícil: metade do ajuste) | ×2,5 | ×2,2 |
+    | gorjeta de "me impressiona" | R$ 80 (rascunho) | R$ 60 |
+
+- **Resultado:** todas as metas no alvo de novo
+  ([tabela](../design/progressao.md#metas-de-ritmo-para-a-calibragem)).
+
 ## Para a usuária decidir :material-help-circle:
 
 | Pergunta | Proposta atual |

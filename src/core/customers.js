@@ -7,8 +7,6 @@ import { pick } from './rng.js';
 
 const A = BALANCE.customers.archetypes;
 
-/** Arquétipos da etapa 2 (o karaokeiro e o crítico entram na etapa 3). */
-export const MVP_ARCHETYPES = ['curious', 'sectionFan', 'musician', 'collector'];
 export const ALL_ARCHETYPES = Object.keys(A);
 
 /** Ajuste de dificuldade: Fácil e Expert usam o fator da tabela; Difícil, metade do ajuste do Expert. */
@@ -20,17 +18,23 @@ function difficultyFactor(archetype, difficulty) {
 }
 
 /**
- * Pesos por arquétipo. `criticToday`: já veio um crítico hoje (no máximo 1 por dia).
- * `archetypes`: os arquétipos liberados nesta etapa.
+ * Pesos por arquétipo.
+ * - `criticToday`: já veio um crítico hoje (no máximo 1 por dia)
+ * - `booth`: tem cabine de audição (karaokeiro ×1,5)
+ * - `karaokeNight`: é a Noite de karaokê (karaokeiro ×3)
  */
-export function customerMix({ difficulty, period, reputation, criticToday = false, archetypes = MVP_ARCHETYPES }) {
+export function customerMix({ difficulty, period, reputation, criticToday = false, booth = false, karaokeNight = false }) {
   const mix = {};
-  for (const id of archetypes) {
+  for (const id of ALL_ARCHETYPES) {
     const a = A[id];
     if (a.minReputation && reputation < a.minReputation) continue;
     if (id === 'critic' && criticToday) continue;
     let w = a.weight * difficultyFactor(a, difficulty);
     if (period === 'night' && a.night) w *= a.night;
+    if (id === 'karaoke') {
+      if (booth) w *= BALANCE.upgrades.booth.karaokeFactor;
+      if (karaokeNight) w *= BALANCE.events.karaoke.karaokeFactor;
+    }
     mix[id] = w;
   }
   return mix;
@@ -41,11 +45,13 @@ export function customerMix({ difficulty, period, reputation, criticToday = fals
  * seções, ele não aparece. Músico recebe um instrumento.
  */
 export function drawVisitors(rng, count, mix, sections) {
-  const weights = sections.length ? mix : { ...mix, sectionFan: 0 };
+  let weights = sections.length ? mix : { ...mix, sectionFan: 0 };
   const visitors = [];
   for (let i = 0; i < count; i++) {
     const archetype = pick(rng, weights);
     if (!archetype) break;
+    // no máximo um crítico por dia
+    if (archetype === 'critic') weights = { ...weights, critic: 0 };
     const v = { archetype };
     if (archetype === 'sectionFan') v.section = sections[Math.floor(rng() * sections.length)];
     if (archetype === 'musician') v.instrument = INSTRUMENTS[Math.floor(rng() * INSTRUMENTS.length)];

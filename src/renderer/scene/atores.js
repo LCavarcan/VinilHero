@@ -58,3 +58,32 @@ export function drawActor(ctx, actor, pose, t) {
     ctx.fillRect(x - 2 + (pose.facing > 0 ? 1 : -2), base - 18 - bob, 6, 1);
   }
 }
+
+// ícones dos balões, 5 × 5 pixels ('1' acende)
+const ICONS = {
+  buy: { color: '#2ecc71', rows: ['.111.', '1.1..', '.111.', '..1.1', '.111.'] },
+  'sold-out': { color: '#e74c3c', rows: ['1...1', '.1.1.', '..1..', '.1.1.', '1...1'] },
+  music: { color: '#e84393', rows: ['..111', '..1.1', '..1.1', '111.1', '11.11'] },
+  wow: { color: '#f1c40f', rows: ['..1..', '..1..', '..1..', '.....', '..1..'] },
+  hmm: { color: '#9d98b5', rows: ['.111.', '1...1', '...1.', '.....', '..1..'] },
+};
+
+/** Balão em cima do cliente, enquanto `actor.balloon` estiver valendo em `t`. */
+export function drawBalloon(ctx, actor, pose, t) {
+  const b = actor.balloon;
+  if (!b || t < b.t0 || t > b.t1) return;
+  const icon = ICONS[b.icon];
+  if (!icon) return;
+  const x = Math.round(pose.x) - 4;
+  const base = SCENE.floor + 2 + (actor.index % 3) * 3;
+  const y = base - 29;
+  ctx.fillStyle = '#eeebf7';
+  ctx.fillRect(x, y, 9, 9);
+  ctx.fillRect(x + 3, y + 9, 2, 1);
+  ctx.fillStyle = icon.color;
+  icon.rows.forEach((row, ry) => {
+    [...row].forEach((c, rx) => {
+      if (c === '1') ctx.fillRect(x + 2 + rx, y + 2 + ry, 1, 1);
+    });
+  });
+}

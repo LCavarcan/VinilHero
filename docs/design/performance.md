@@ -18,8 +18,10 @@ flowchart LR
 
 Todos os números desta página ficam juntos em um arquivo só (`src/core/balance.js`). Eles foram
 **calibrados na etapa 2** com o simulador, contra as
-[metas de ritmo](progressao.md#metas-de-ritmo-para-a-calibragem); os valores antes e depois estão em
-[D-13](../decisoes/index.md#d-13-calibragem-da-etapa-2). Os exemplos desta página são testes
+[metas de ritmo](progressao.md#metas-de-ritmo-para-a-calibragem), e **recalibrados na etapa 3**
+(pedidos, críticos, estoque); os valores antes e depois estão em
+[D-13](../decisoes/index.md#d-13-calibragem-da-etapa-2) e
+[D-17](../decisoes/index.md#d-17-calibragem-da-etapa-3). Os exemplos desta página são testes
 (`test/examples.test.js`): mudar um número no `balance.js` quebra o teste do exemplo correspondente.
 
 ## 1. Desempenho (P)
@@ -98,9 +100,12 @@ Cada visitante recebe um arquétipo, sorteado com pesos:
 | Curioso | 50 | ×1,4 | ×0,8 | | |
 | Fã de seção | 25 | | | | a seção dele é sorteada entre as seções com discos |
 | Músico | 10 | ×0,6 | ×1,5 | | o instrumento dele é sorteado |
-| Colecionador | 5 | ×0,3 | ×2,5 | | reputação ≥ 15 |
+| Colecionador | 5 | ×0,3 | ×2,2 | | reputação ≥ 15 |
 | Karaokeiro | 8 | | | ×2 | |
 | Crítico | 2 | | | | reputação ≥ 30; no máximo 1 por dia |
+
+Com a **cabine de audição**, o karaokeiro vem ×1,5; na **Noite de karaokê**, ×3 (os dois se somam).
+Com o **letreiro neon**, a base `B` ganha +3.
 
 (Médio e Difícil ficam no meio: Médio sem ajuste, Difícil com metade do ajuste do Expert.)
 
@@ -122,8 +127,10 @@ chance = base · afinidade · (0,75 + 0,25·P) · vitrine
 | Crítico | 0 | — | — |
 
 - **Qual disco é comprado:** o disco tocado, com 70% de chance; senão, outro disco da mesma seção (o
-  cliente "aproveitou para olhar a prateleira"). Na etapa 3, com estoque, um disco esgotado passa a
-  vez para o próximo da seção.
+  cliente "aproveitou para olhar a prateleira"). Disco esgotado passa a vez para outro da seção com
+  cópia; sem nenhum, o cliente vai embora sem comprar ([Estoque](progressao.md#estoque)).
+- **Cafeteria:** 15% dos compradores levam um segundo disco da seção (outra venda, outro preço da
+  faixa).
 - **Valor:** sorteado na faixa do arquétipo ([Progressão](progressao.md#precos)).
 
 ## 5. Reputação
@@ -133,21 +140,22 @@ Por apresentação:
 ```text
 Δ = (P − 0,35) · 2,7    × 3 se houver crítico
     + 1,5               se full combo
-    + 1                 por pedido atendido
+    + 0,5               por pedido atendido (+3 o do cliente exigente)
 ```
 
-- Quando o total é positivo, ele é reduzido perto do topo: `Δ × (1 − reputação / 120)²`. Com essa
-  curva, tocar bem leva a reputação a 25 em ~1 semana, a 50 em ~3 semanas e a 75 em ~7 semanas.
+- Quando o total é positivo, ele é reduzido perto do topo: `Δ × (1 − reputação / 122)³`. Com essa
+  curva, tocar bem (e atender os pedidos que der) leva a reputação a 25 em ~1 semana, a 50 em ~3
+  semanas e a 75 em ~8 semanas.
 - Tocar razoável (P ≥ 0,35) já não perde reputação; tocar mal perde.
 - **"Só pôr pra tocar" não muda a reputação** (Δ = 0): não jogar não é punido, só não avança.
 - A reputação fica entre 0 e 100.
 
-Exemplos com reputação 20 (redução de ×0,69 nos ganhos):
+Exemplos com reputação 20 (redução de ×0,58 nos ganhos):
 
 | Partida | Δ |
 |---|---|
-| P = 0,71 | +0,7 |
-| P = 1, full combo | +2,3 |
+| P = 0,71 | +0,6 |
+| P = 1, full combo | +1,9 |
 | P = 0,35 | 0,0 |
 | P = 0,08, com crítico | −2,2 |
 

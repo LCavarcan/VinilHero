@@ -6,8 +6,8 @@ import { GameError } from './shelves.js';
 
 const U = BALANCE.upgrades;
 
-/** Melhorias da etapa 2. As outras (neon, cabine, palco, cafeteria) entram na etapa 3. */
-export const MVP_UPGRADES = ['sound', 'window', 'extraShelf'];
+/** Todas as melhorias, na ordem da tela. */
+export const UPGRADES = ['sound', 'window', 'extraShelf', 'booth', 'neon', 'stage', 'cafe'];
 
 /** Quantas compras de melhoria a loja já fez (cada nível e cada prateleira conta uma). */
 export function upgradeCount(state) {
@@ -35,6 +35,13 @@ export function upgradeInfo(state, id) {
     }
     case 'extraShelf':
       return { id, level: 0, maxLevel: Infinity, price: U.extraShelf.price, minReputation: 0, perSection: true };
+    case 'neon':
+    case 'booth':
+    case 'stage':
+    case 'cafe': {
+      const level = state.upgrades[id] ?? 0;
+      return { id, level, maxLevel: 1, price: level ? null : U[id].price, minReputation: U[id].minReputation ?? 0 };
+    }
     default:
       throw new GameError('unknownUpgrade');
   }
@@ -52,7 +59,7 @@ export function canBuy(state, id) {
 }
 
 /** Lista para a tela de melhorias. */
-export function upgradeOptions(state, ids = MVP_UPGRADES) {
+export function upgradeOptions(state, ids = UPGRADES) {
   return ids.map((id) => ({ ...upgradeInfo(state, id), ...canBuy(state, id) }));
 }
 

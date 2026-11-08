@@ -20,7 +20,9 @@ export function render(root, state, ui) {
 
 function levelText(option) {
   if (option.perSection) return null;
-  return option.level >= option.maxLevel ? 'nível máximo' : `nível ${option.level} de ${option.maxLevel}`;
+  const requires = option.minReputation && option.price !== null ? ` · requer reputação ${option.minReputation}` : '';
+  if (option.maxLevel === 1) return option.level ? 'comprada' : `compra única${requires}`;
+  return option.level >= option.maxLevel ? 'nível máximo' : `nível ${option.level} de ${option.maxLevel}${requires}`;
 }
 
 function item(option, state, ui) {

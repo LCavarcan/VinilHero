@@ -42,3 +42,27 @@ test('muitos visitantes entram em até 4,5 s; sem visitantes não quebra', () =>
   const none = buildTimeline({ songId: 'y', visitors: [] });
   assert.deepEqual(countersAt(none, 10), { visitors: 0, sales: 0, revenue: 0 });
 });
+
+test('vendas sozinhas e segundo disco: contadores batem com vendas e faturamento do resultado', () => {
+  const full = {
+    songId: 'a1',
+    mode: 'play',
+    P: 0.9,
+    play: { instrument: 'vocals' },
+    visitors: [
+      { archetype: 'curious', bought: 'a1', price: 50, extra: 'a2', extraPrice: 45 },
+      { archetype: 'karaoke', bought: null, price: 0, noStock: true },
+      { archetype: 'karaoke', bought: 'a1', price: 60 },
+    ],
+    soloSales: [{ songId: 'm1', price: 60 }],
+  };
+  const tl = buildTimeline(full);
+  // 3 visitantes (o colecionador de passagem não conta), 4 cópias vendidas
+  assert.deepEqual(countersAt(tl, tl.duration), { visitors: 3, sales: 4, revenue: 215 });
+  assert.equal(tl.actors.length, 4);
+  assert.equal(tl.actors[1].balloon.icon, 'sold-out');
+  assert.equal(tl.actors[2].balloon.icon, 'music');
+  assert.equal(tl.actors[0].balloon.icon, 'buy');
+  const b = tl.actors[0].balloon;
+  assert.ok(b.t1 > b.t0);
+});

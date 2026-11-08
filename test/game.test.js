@@ -128,3 +128,29 @@ test('save estragado vira backup e a loja recomeça, com aviso', (t) => {
   assert.ok(fs.readdirSync(dir).some((f) => f.startsWith('save.broken-')));
   assert.equal(view.shop.money, 300);
 });
+
+test('pedidos e evento do dia: sorteados na primeira abertura e iguais depois de fechar e abrir', (t) => {
+  const { make } = setup(t);
+  const first = make().start(library, []);
+  assert.equal(first.day.prepared, true);
+  const again = make().start(library, []);
+  assert.deepEqual(again.day.requests, first.day.requests);
+  assert.equal(again.day.event, first.day.event);
+  for (const r of first.day.requests) assert.ok(Array.isArray(r.matches));
+});
+
+test('estoque pelo jogo: repor grava a encomenda, a reposição automática liga e desliga', (t) => {
+  const { make } = setup(t);
+  const game = make();
+  game.start(library, []);
+  let view = game.restock({ songId: 'a1', copies: 2 });
+  assert.equal(view.shop.money, 300 - 30);
+  assert.deepEqual(view.restock.orders, { a1: 2 });
+  assert.equal(view.shelves.sections.find((s) => s.id === 'brasil').records[0].onOrder, 2);
+  view = game.setAutoRestock({ auto: true });
+  assert.equal(view.restock.auto, true);
+  // continua depois de fechar e abrir
+  const reopened = make().start(library, []);
+  assert.deepEqual(reopened.restock.orders, { a1: 2 });
+  assert.equal(reopened.restock.auto, true);
+});

@@ -29,7 +29,7 @@ function countIn(state, section, libraryIds) {
 
 /** Registro do disco no save, para um disco que o save ainda não conhece. */
 export function newRecordEntry(section) {
-  return { section, timesPlayed: 0, best: {}, mastered: false, masteredAt: null };
+  return { section, stock: BALANCE.stock.initial, timesPlayed: 0, best: {}, mastered: false, masteredAt: null };
 }
 
 /**
@@ -89,4 +89,14 @@ export function sectionsWithRecords(state, summaries) {
     if (section && section !== STORAGE) set.add(section);
   }
   return SECTIONS.filter((id) => set.has(id));
+}
+
+/** Discos da biblioteca que estão nas prateleiras (fora do depósito), com os dados do save. */
+export function shelfRecords(state, summaries) {
+  return summaries
+    .filter((s) => {
+      const section = state.records[s.id]?.section;
+      return !!section && section !== STORAGE;
+    })
+    .map((s) => mergedRecord(state, s));
 }
