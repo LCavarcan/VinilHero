@@ -9,7 +9,7 @@ Cinco etapas. Cada uma termina com algo **jogável ou verificável** e com os te
 | [2. Loja jogável (MVP)](etapa2.md) | um dia completo: escolher disco, tocar, ver clientes, fechar o dia, comprar melhoria | não | feita; faltam 3 dias jogados de verdade |
 | [3. Clientes, estoque e eventos](etapa3.md) | pedidos, estoque, eventos, todas as melhorias, títulos, instalador | não | feita; faltam 7 dias jogados e testar o instalador num PC sem Node |
 | [4. Loja ao vivo](etapa4.md) | loja reage durante a música, show da banda, "Tocar no Fretshift" | **sim** (opcional) | feita; falta publicar o Fretshift 0.2.0 e jogar com a ponte ligada |
-| [5. Lojas rivais](etapa5.md) | lojas dos amigos, referência do disco, disco da semana | **sim** (servidor) | a fazer |
+| [5. Lojas rivais](etapa5.md) | lojas dos amigos, referência do disco, disco da semana | **sim** (servidor) | feita; falta publicar o servidor e o Fretshift 0.3.0 e testar com uma amiga |
 
 ```mermaid
 flowchart LR

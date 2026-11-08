@@ -82,6 +82,7 @@ function affinity(visitor, { record, play, P, instruments, difficulties }) {
  * - `mode`: 'play' | 'passive' | 'show'
  * - `rng`: sorteio com semente
  * - `live`: dados da ponte ao vivo (etapa 4), ou null
+ * - `social`: lojas rivais (etapa 5): `{ reference: { friend } | null, weekly: boolean }`, ou null
  */
 export function resolvePresentation({
   state,
@@ -94,6 +95,7 @@ export function resolvePresentation({
   mode,
   rng,
   live = null,
+  social = null,
 }) {
   const day = state.day;
   const period = day.period;
@@ -118,7 +120,9 @@ export function resolvePresentation({
 
   const bandE = show && !passive ? bandPerf.E : 1;
   const eventE = eventFactor(event, period, record);
-  const E = eventE * bandE;
+  const weekly = !passive && !!social?.weekly;
+  const reference = !passive && social?.reference ? social.reference : null;
+  const E = eventE * bandE * (weekly ? BALANCE.weekly.E : 1);
   const count = visitorCount({
     P,
     difficulty: show && !passive ? difficulties : difficulty,
@@ -126,7 +130,7 @@ export function resolvePresentation({
     repetition,
     period,
     sound: upgrades.sound ?? 0,
-    event: E,
+    event: E * (reference ? 1 + BALANCE.rivals.referenceBonus : 1),
     baseBonus: upgrades.neon ? BALANCE.upgrades.neon.baseBonus : 0,
   });
   const mix = customerMix({
@@ -240,6 +244,8 @@ export function resolvePresentation({
       ? { instrument: play.instrument, difficulty: play.difficulty, stars: play.stars ?? 0, accuracy: play.accuracy ?? 0, fullCombo }
       : null,
     P,
+    reference,
+    weekly,
     band: show
       ? {
           E: bandPerf.E,
@@ -278,6 +284,8 @@ export function resolvePresentation({
       critic,
       delta,
       band: show && !passive ? bandPerf : null,
+      reference,
+      weekly,
     }),
     live,
   };
@@ -301,6 +309,8 @@ function reasonsFor(r) {
 
   if (ignored) reasons.push({ code: 'karaokeIgnored', instrument: play.instrument });
   if (r.band) reasons.push({ code: 'band', count: r.band.players.length, E: r.band.E, weak: r.band.weak });
+  if (r.weekly) reasons.push({ code: 'weekly' });
+  if (r.reference) reasons.push({ code: 'reference', friend: r.reference.friend });
   else if (passive) reasons.push({ code: 'passive' });
   if (event && E !== 1) reasons.push({ code: `event_${event}`, up: E > 1 });
   for (const q of r.done) reasons.push({ code: 'requestDone', request: q.id, kind: q.kind, tip: q.tip });

@@ -5,6 +5,7 @@ import { $, el, toast } from './dom.js';
 import * as acerto from './screens/acerto.js';
 import * as aguardando from './screens/aguardando.js';
 import * as aovivo from './screens/aovivo.js';
+import * as vizinhanca from './screens/vizinhanca.js';
 import * as escolha from './screens/escolha.js';
 import * as estoque from './screens/estoque.js';
 import * as melhorias from './screens/melhorias.js';
@@ -26,6 +27,8 @@ let status = null;
 let live = null;
 // a escolha (pending.since) a que o "ao vivo" pertence: escolher de novo começa sem cena
 let liveFor = null;
+// conta Microsoft (lojas rivais): { signedIn, displayName, friendCode }
+let account = null;
 const liveNow = () => (live && state?.pending && liveFor === state.pending.since ? live : null);
 // telas que a jogadora abriu por cima do fluxo do dia
 let overlay = null; // 'upgrades' | 'stock' | 'stats' | null
@@ -38,6 +41,19 @@ let hudOverride = null;
 
 const ui = {
   live: () => liveNow(),
+  toastError(code) {
+    toast(ERRORS[code] ?? ERRORS.unexpected, 'error', 7000);
+  },
+  async signIn() {
+    toast('Abrindo o login da Microsoft no navegador…', 'info', 5000);
+    account = await window.api.account.signIn();
+    if (account.error) toast(`O login não deu certo: ${account.error}`, 'error', 8000);
+    renderAccount();
+  },
+  async signOut() {
+    account = await window.api.account.signOut();
+    renderAccount();
+  },
   status: () => status,
   /** Abre o Fretshift na música; avisa se não achar o executável. */
   async launch(songId) {
@@ -107,6 +123,7 @@ function setState(next) {
 }
 
 function renderHud() {
+  renderAccount();
   const hud = $('hud');
   hud.replaceChildren();
   $('hud').classList.toggle('hidden', !state);
@@ -154,6 +171,7 @@ const SCREENS = {
   upgrades: melhorias,
   stock: estoque,
   stats: minhaloja,
+  neighborhood: vizinhanca,
 };
 // botões do topo → tela (null: a loja, o fluxo do dia)
 const NAV = [
@@ -161,7 +179,17 @@ const NAV = [
   ['nav-stock', 'stock'],
   ['nav-upgrades', 'upgrades'],
   ['nav-stats', 'stats'],
+  ['nav-neighborhood', 'neighborhood'],
 ];
+
+/** Canto de cima: "Entrar" ou o nome da conta (abre a Vizinhança). */
+function renderAccount() {
+  const chip = $('account');
+  chip.classList.toggle('hidden', !state);
+  chip.textContent = account?.signedIn ? (account.displayName ?? 'Conta') : 'Entrar';
+  chip.classList.toggle('signed', !!account?.signedIn);
+  chip.title = account?.signedIn ? 'Vizinhança: lojas dos amigos e disco da semana' : 'Entrar com a conta Microsoft do Fretshift';
+}
 
 function route() {
   $('screen-not-found').classList.toggle('hidden', !!state || !status || status.found);
@@ -200,6 +228,10 @@ async function refresh() {
   status = await window.api.fretshift.status();
   renderStatus();
   setState(await window.api.state.get());
+  window.api.account.status().then((a) => {
+    account = a;
+    renderAccount();
+  });
 }
 
 $('pick-dir').addEventListener('click', async () => {
@@ -209,6 +241,7 @@ $('pick-dir').addEventListener('click', async () => {
   else if (res.error) $('pick-error').textContent = res.error;
 });
 for (const [id, name] of NAV) $(id).addEventListener('click', () => ui.open(name));
+$('account').addEventListener('click', () => (account?.signedIn ? ui.open('neighborhood') : ui.signIn()));
 
 window.api.fretshift.onStatus((s) => {
   status = s;

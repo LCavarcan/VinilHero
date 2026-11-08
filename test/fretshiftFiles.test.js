@@ -195,4 +195,5 @@ test('Tocar no Fretshift: acha o executável e só monta argumentos com id hexad
   assert.deepEqual(openSongArgs('8f0fab12'), ['--open-song', '8f0fab12']);
   assert.equal(openSongArgs('--x'), null);
   assert.equal(openSongArgs('8f0f ab'), null);
+  assert.deepEqual(openSongArgs('8f0fab12', { importing: true }), ['--import-song', '8f0fab12']);
 });

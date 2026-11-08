@@ -9,7 +9,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { emptyCache, loadRecords, readParties, readPlays, watchFretshift } from '../bridge/fretshiftFiles.js';
 import { findFretshiftDir, findFretshiftExe, isFretshiftDir, openSongArgs } from '../bridge/fretshiftPaths.js';
 import { DEFAULT_PORT, startLiveServer } from '../bridge/liveServer.js';
+import { api as serverApi, isSignedIn, signIn, signOut } from './account.js';
 import { createGame } from './game.js';
+import { createSocial } from './social.js';
 import { createStore } from './store.js';
 import { startUpdater } from './updater.js';
 
@@ -18,6 +20,9 @@ const dataFile = (name) => path.join(app.getPath('userData'), name);
 
 // enquanto aguarda uma partida, relê o scores.json de tempos em tempos (o fs.watch pode perder eventos)
 const POLL_MS = 5000;
+// disco da semana: busca de novo a cada hora
+const WEEKLY_MS = 60 * 60 * 1000;
+const social = createSocial({ api: serverApi, isSignedIn });
 
 const settings = createStore(() => dataFile('settings.json'), {
   fretshiftDir: null,
@@ -92,6 +97,62 @@ async function pollWhileWaiting() {
 function handleLive(events) {
   if (!game) return;
   send('live:update', game.onLive(events));
+}
+
+// ---------- lojas rivais (etapa 5) ----------
+
+/** Disco da semana: vai para o jogo (bônus) e para a janela (destaque na prateleira). */
+async function refreshWeekly(force = false) {
+  const weekly = await social.weekly(force);
+  if (game && weekly) {
+    game.setWeekly(weekly);
+    pushState();
+  }
+  return weekly;
+}
+
+async function accountStatus() {
+  const signedIn = await isSignedIn().catch(() => false);
+  const me = signedIn ? await social.me() : null;
+  return { signedIn, displayName: me?.displayName ?? null, friendCode: me?.friendCode ?? null };
+}
+
+ipcMain.handle('account:status', () => accountStatus());
+ipcMain.handle('account:sign-in', async () => {
+  try {
+    await signIn();
+  } catch (err) {
+    return { ...(await accountStatus()), error: err.message };
+  }
+  social.forget();
+  refreshWeekly(true);
+  publishShop();
+  return accountStatus();
+});
+ipcMain.handle('account:sign-out', async () => {
+  await signOut();
+  social.forget();
+  game?.setWeekly(null);
+  pushState();
+  return accountStatus();
+});
+// tela "Vizinhança": lojas dos amigos e o disco da semana atualizado
+ipcMain.handle('social:neighborhood', async () => {
+  const [shops, weekly] = await Promise.all([social.friendsShops(), refreshWeekly(true)]);
+  return { account: await accountStatus(), shops, weekly: game?.view()?.weekly ?? weekly ?? null };
+});
+// disco da semana fora da biblioteca: o Fretshift baixa o chart publicado
+ipcMain.handle('fretshift:import', (_e, { songId } = {}) => launchFretshift(songId, { importing: true }));
+
+/** Manda o resumo da loja para os amigos; sem login ou sem internet, tenta no próximo fechamento. */
+function publishShop() {
+  const summary = game?.shopSummary();
+  if (summary) social.publishShop(summary);
+}
+
+/** Rivais do disco escolhido (para a referência), antes de a partida chegar. */
+function prefetchRivals(songId) {
+  social.rivals(songId).then((entries) => entries && game?.setRivals(songId, entries));
 }
 
 async function startLive() {
@@ -195,9 +256,17 @@ function gameAction(channel, fn) {
 
 ipcMain.handle('fretshift:status', () => status());
 ipcMain.handle('state:get', () => game?.view() ?? null);
-gameAction('day:choose', ({ songId, mode }) => game.choose({ songId, mode }));
+gameAction('day:choose', ({ songId, mode }) => {
+  const view = game.choose({ songId, mode });
+  if (mode !== 'passive') prefetchRivals(songId);
+  return view;
+});
 gameAction('day:cancel', () => game.cancel());
-gameAction('day:close', () => game.closeDay());
+gameAction('day:close', () => {
+  const view = game.closeDay();
+  publishShop();
+  return view;
+});
 gameAction('day:open', () => game.openDay());
 gameAction('day:seen', () => game.seen());
 gameAction('shop:buy', ({ upgradeId, section }) => game.buy({ upgradeId, section }));
@@ -218,10 +287,10 @@ ipcMain.handle('fretshift:pick-exe', async () => {
   return { ok: true, status: status() };
 });
 
-function launchFretshift(songId) {
+function launchFretshift(songId, { importing = false } = {}) {
   const exe = findFretshiftExe(settings.get());
   if (!exe) return { ok: false, error: 'noExe' };
-  const args = openSongArgs(songId);
+  const args = openSongArgs(songId, { importing });
   if (!args) return { ok: false, error: 'badSong' };
   try {
     const child = spawn(exe, args, { detached: true, stdio: 'ignore' });
@@ -265,6 +334,10 @@ if (!app.requestSingleInstanceLock()) {
     pollTimer = setInterval(pollWhileWaiting, POLL_MS);
     createWindow();
     startLive();
+    refreshWeekly();
+    setInterval(refreshWeekly, WEEKLY_MS);
+    // apresentação que já estava esperando ao abrir: busca os rivais dela
+    if (game?.state?.pending && game.state.pending.mode !== 'passive') prefetchRivals(game.state.pending.songId);
     startUpdater(() => win);
   });
 

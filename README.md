@@ -4,8 +4,8 @@ Simulador de **loja de discos** que se move com a sua performance no [Fretshift]
 Cada música da sua biblioteca do Fretshift vira um disco na prateleira; tocar bem esse disco no
 Fretshift enche a loja de clientes, vende mais e aumenta a fama da loja.
 
-> **Situação:** etapa 4 feita: a loja reage ao vivo enquanto você toca (com a integração ligada no
-> Fretshift), show da banda no "Jogar juntos" e o botão "Tocar no Fretshift". Roteiro em
+> **Situação:** as cinco etapas feitas: loja jogável, pedidos, estoque e eventos, loja ao vivo com o
+> Fretshift, show da banda e lojas rivais (amigos, referência do disco, disco da semana). Roteiro em
 > [`docs/roteiro`](docs/roteiro/index.md).
 
 ## A ideia em uma frase

@@ -31,8 +31,11 @@ export function findFretshiftExe(settings = {}, { localAppData = process.env.LOC
   return candidates.find((p) => p && /\.exe$/i.test(p) && fs.existsSync(p)) ?? null;
 }
 
-/** Argumentos para abrir uma música no Fretshift; só ids hexadecimais (o mesmo que o Fretshift aceita). */
-export function openSongArgs(songId) {
+/**
+ * Argumentos para abrir uma música no Fretshift; só ids hexadecimais (o mesmo que o Fretshift aceita).
+ * `importing`: baixar o chart publicado (disco da semana que não está na biblioteca; Fretshift 0.3.0+).
+ */
+export function openSongArgs(songId, { importing = false } = {}) {
   if (typeof songId !== 'string' || !/^[0-9a-f]{6,64}$/.test(songId)) return null;
-  return ['--open-song', songId];
+  return [importing ? '--import-song' : '--open-song', songId];
 }

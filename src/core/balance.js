@@ -78,6 +78,9 @@ export const BALANCE = deepFreeze({
   // show da banda (palco + "Jogar juntos" do Fretshift): E = 1 + 0,25·(pessoas − 1); alguém com
   // P < 0,3 corta metade do bônus. Ver docs/design/eventos.md#show-da-banda
   show: { perPerson: 0.25, weakP: 0.3, weakCut: 0.5 },
+  // lojas rivais (etapa 5): referência do disco = +15% de visitantes; disco da semana E = 1,3
+  rivals: { referenceBonus: 0.15 },
+  weekly: { E: 1.3, minReputation: 50 },
 
   // ---------- Progressão e economia (docs/design/progressao.md) ----------
   start: { money: 300, reputation: 5, shelvesPerSection: 1 },

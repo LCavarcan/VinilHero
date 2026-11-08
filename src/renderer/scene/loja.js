@@ -230,12 +230,23 @@ function counter(ctx, t) {
   rect(ctx, C.metal, x + 20, 58, 1, 5);
 }
 
+/** Troféu do disco da semana (1º lugar entre os amigos na semana passada), no balcão. */
+function trophyOnCounter(ctx) {
+  const x = COUNTER_X - 8 + 24;
+  rect(ctx, '#f1c40f', x, 58, 6, 4);
+  rect(ctx, '#f1c40f', x - 1, 58, 1, 2);
+  rect(ctx, '#f1c40f', x + 6, 58, 1, 2);
+  rect(ctx, '#d4a10c', x + 2, 62, 2, 3);
+  rect(ctx, '#8b5a3c', x + 1, 65, 4, 2);
+  rect(ctx, '#fff6c2', x + 1, 59, 1, 1);
+}
+
 /**
  * Desenha a loja (sem os clientes). `t` em segundos anima o toca-discos, a caixa de som, o neon e a
  * chuva. `look`: { upgrades, event, mastered (discos dominados), legendary }.
  */
 export function drawShop(ctx, look, t = 0) {
-  const { upgrades, event = null, mastered = 0, legendary = false } = look;
+  const { upgrades, event = null, mastered = 0, legendary = false, trophy = false } = look;
   const rain = event === 'rain';
   ctx.imageSmoothingEnabled = false;
   background(ctx);
@@ -249,5 +260,6 @@ export function drawShop(ctx, look, t = 0) {
   speaker(ctx, upgrades.sound ?? 0, t);
   if (upgrades.cafe) cafe(ctx, t);
   counter(ctx, t);
+  if (trophy) trophyOnCounter(ctx);
   if (legendary) legendaryFrame(ctx);
 }

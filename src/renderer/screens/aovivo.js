@@ -67,7 +67,7 @@ export function render(root, state, ui) {
   );
 
   const crowd = createCrowd();
-  const look = shopLook(state, { event: state.day.event, shop: state.shop });
+  const look = { ...shopLook(state, { event: state.day.event, shop: state.shop }), trophy: !!state.weekly?.lastWeek?.winner?.me };
   let lastSection = null;
   let lastSp = false;
   let last = performance.now();

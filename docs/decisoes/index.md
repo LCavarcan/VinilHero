@@ -227,6 +227,19 @@ página).
 - **Por quê:** a ponte só anima; tudo que muda dinheiro e reputação continua vindo das partidas
   gravadas, e o jogo funciona igual sem ela (fora o bônus de Star Power).
 
+### D-20 · Lojas rivais
+
+- **Contexto:** a etapa 5 reaproveita o servidor do Fretshift (contas, amigos, partidas).
+- **Escolhas:**
+    - Login com o mesmo registro do Entra, sem mudança no portal (retorno em `localhost`).
+    - Referência: +15% de visitantes quando a sua melhor pontuação (contando a partida que acabou de
+      chegar) passa a do melhor amigo no mesmo disco, instrumento e dificuldade. Calculada no PC com
+      `GET /songs/:id/rivals`, buscado ao escolher o disco (cache de 1 hora). Sem internet: sem bônus.
+    - Disco da semana: `E = 1,3` com reputação 50, partida dentro da semana. O ranking conta para todo
+      mundo; o troféu (1º da semana passada) aparece no balcão.
+    - O resumo da loja vai ao servidor ao fechar o dia e ao entrar na conta; falha não bloqueia.
+- **Por quê:** tudo que vem do servidor é bônus; o jogo funciona igual sem conta e sem internet.
+
 ## Para a usuária decidir :material-help-circle:
 
 | Pergunta | Proposta atual |

@@ -26,6 +26,7 @@ export function shopLook(state, result) {
     event: result.event ?? null,
     mastered: shelf.filter((r) => r.mastered).length,
     legendary: result.shop.title === 'legendary',
+    trophy: !!state.weekly?.lastWeek?.winner?.me,
   };
 }
 

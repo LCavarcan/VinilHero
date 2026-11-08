@@ -199,10 +199,10 @@ Não há servidor novo.
 ### Login
 
 O VinilHero usa `@azure/msal-node` como o Fretshift (`fretshift/src/main/account.js`), com o **mesmo
-registro de app** no Entra (mesmo id do usuário `"<tid>:<oid>"`, então os amigos são os mesmos). É
-preciso acrescentar o endereço de retorno do VinilHero ao registro.
+registro de app** no Entra (mesmo id do usuário `"<tid>:<oid>"`, então os amigos são os mesmos). O
+retorno do login é `http://localhost:<porta>`, que o registro já aceita: nada muda no portal.
 
-### Novas tabelas (`server/migrations/0003_lojas.sql` no repositório do Fretshift)
+### Novas tabelas (`server/migrations/0004_lojas.sql` no repositório do Fretshift)
 
 ```sql
 CREATE TABLE shops (
@@ -229,6 +229,7 @@ CREATE TABLE weekly_records (
 |---|---|
 | `PUT /shop` | publica o resumo da própria loja |
 | `GET /friends/shops` | resumo das lojas dos amigos (nome, título, reputação, melhorias) |
+| `GET /songs/:id/rivals` | melhor partida de cada um (você e os amigos) em cada instrumento e dificuldade, no mesmo chart (para a referência) |
 | `GET /weekly` | disco da semana e ranking da semana entre amigos (partidas de `plays` daquele disco, com o mesmo `chart_hash`, dentro da semana) |
 
 O disco da semana é escolhido por um **Cron Trigger** do Worker toda segunda-feira, entre as músicas

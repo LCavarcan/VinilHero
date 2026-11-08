@@ -240,6 +240,10 @@ export function reasonText(r) {
   switch (r.code) {
     case 'passive':
       return 'Só pôr pra tocar: a loja teve o movimento de uma apresentação fraca.';
+    case 'weekly':
+      return 'Disco da semana: a vizinhança inteira veio ouvir (movimento ×1,3).';
+    case 'reference':
+      return `Os clientes da loja ${r.friend ? `de ${r.friend}` : 'do seu amigo'} vieram ouvir você: você é a referência deste disco (+15% de visitantes).`;
     case 'band':
       return r.weak
         ? `Show com ${r.count} pessoas, mas alguém se perdeu e o público notou: movimento ×${oneDecimal.format(r.E)}.`

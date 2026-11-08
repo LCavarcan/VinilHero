@@ -9,6 +9,7 @@ import { applyLiveEvents, liveForPresentation } from '../core/live.js';
 import { importHistory, processParties, processPlays, resolvePassive } from '../core/plays.js';
 import { isOpenRequest, recordMatches } from '../core/requests.js';
 import { newSave } from '../core/saveFormat.js';
+import { shopSummary } from '../core/social.js';
 import { moveRecord, shelfRecords, shelfView, syncLibrary } from '../core/shelves.js';
 import { restock, setAutoRestock, topUp } from '../core/stock.js';
 import { readSave, writeSave } from './saveFile.js';
@@ -22,6 +23,8 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
   let lastSummary = null;
   // ponte ao vivo: a partida do disco pendente acontecendo agora no Fretshift (só na memória)
   let live = null;
+  // lojas rivais (etapa 5), do servidor: rivais por disco e o disco da semana (só na memória)
+  const social = { rivals: {}, weekly: null };
 
   const persist = () => writeSave(file, state);
   const findRecord = (id) => library.find((r) => r.id === id);
@@ -38,12 +41,12 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
   }
 
   function applyPlays(plays) {
-    return applyOutcome(processPlays(state, plays, library, { live: liveForPresentation(live, state.pending) }));
+    return applyOutcome(processPlays(state, plays, library, { live: liveForPresentation(live, state.pending), social }));
   }
 
   /** Partidas do "Jogar juntos": resolvem o show da banda pendente. */
   function applyParties(parties) {
-    return applyOutcome(processParties(state, parties, library, { live: liveForPresentation(live, state.pending) }));
+    return applyOutcome(processParties(state, parties, library, { live: liveForPresentation(live, state.pending), social }));
   }
 
   function applyOutcome(out) {
@@ -108,6 +111,11 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
         sections: shelves.sections.map((s) => ({ ...s, records: s.records.map(withToday) })),
         storage: shelves.storage.map(withToday),
       },
+      weekly: social.weekly && {
+        ...social.weekly,
+        inLibrary: !!social.weekly.song && !!findRecord(social.weekly.song.id),
+        active: state.shop.reputation >= BALANCE.weekly.minReputation,
+      },
       lastSummary: state.day.period === 'closed' ? (lastSummary ?? state.history.at(-1) ?? null) : null,
       history: state.history,
       stats: state.stats,
@@ -134,6 +142,15 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
     },
     get live() {
       return live;
+    },
+    /** Resumo da loja para os amigos (PUT /shop). */
+    shopSummary: () => (state ? shopSummary(state) : null),
+    setRivals(songId, entries) {
+      social.rivals = { ...social.rivals, [songId]: entries };
+    },
+    setWeekly(weekly) {
+      social.weekly = weekly;
+      return view();
     },
     get state() {
       return state;

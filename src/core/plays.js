@@ -7,6 +7,7 @@ import { performanceOf } from './performance.js';
 import { mulberry32, seedFrom } from './rng.js';
 import { mergedRecord, newRecordEntry, sectionsWithRecords, shelfRecords, STORAGE } from './shelves.js';
 import { resolvePresentation } from './simulation.js';
+import { referenceFor, weeklyApplies } from './social.js';
 
 const round2 = (x) => Math.round(x * 100) / 100;
 const time = (iso) => Date.parse(iso) || 0;
@@ -73,17 +74,30 @@ export function presentationSeed(state, { playId, songId }) {
   return playId ? seedFrom(state.seed, playId) : seedFrom(state.seed, state.day.number, state.day.period, songId);
 }
 
-function resolveAndSettle(state, { play, band = null, library, live }) {
+/**
+ * Lojas rivais para esta apresentação: referência (só partida solo, que vai para o ranking do
+ * Fretshift) e disco da semana. `social`: `{ rivals: { [songId]: entries }, weekly }`, do servidor.
+ */
+function socialFor(state, social, { record, play, band }) {
+  if (!social || state.pending.mode === 'passive') return null;
+  const reference = play && !band ? referenceFor(social.rivals?.[record.id], play) : null;
+  const weekly = weeklyApplies(social.weekly, { record, playedAt: (band ?? play)?.playedAt, reputation: state.shop.reputation });
+  return reference || weekly ? { reference, weekly } : null;
+}
+
+function resolveAndSettle(state, { play, band = null, library, live, social = null }) {
   const { songId, mode } = state.pending;
   const playId = band?.id ?? play?.id ?? null;
+  const context = presentationContext(state, songId, library);
   const result = resolvePresentation({
     state,
-    ...presentationContext(state, songId, library),
+    ...context,
     play,
     band,
     mode,
     rng: mulberry32(presentationSeed(state, { playId, songId })),
     live,
+    social: socialFor(state, social, { record: context.record, play, band }),
   });
   return { state: settle(state, result, { playId }), result };
 }
@@ -98,7 +112,7 @@ export function resolvePassive(state, library) {
  * Partidas novas (fora de processedPlays), em ordem de playedAt: atualizam o histórico; a primeira
  * do disco pendente, gravada depois da escolha, resolve a apresentação. Devolve `{ state, results }`.
  */
-export function processPlays(state, plays, library, { live = null } = {}) {
+export function processPlays(state, plays, library, { live = null, social = null } = {}) {
   const processed = new Set(state.processedPlays);
   const fresh = plays.filter((p) => !processed.has(p.id)).sort(byPlayedAt);
   if (!fresh.length) return { state, results: [] };
@@ -108,7 +122,7 @@ export function processPlays(state, plays, library, { live = null } = {}) {
     next = recordPlayHistory(next, play);
     const pending = next.pending;
     if (pending?.mode === 'play' && play.songId === pending.songId && time(play.playedAt) > time(pending.since)) {
-      const resolved = resolveAndSettle(next, { play, library, live });
+      const resolved = resolveAndSettle(next, { play, library, live, social });
       next = resolved.state;
       results.push(resolved.result);
     }
@@ -122,7 +136,7 @@ export function processPlays(state, plays, library, { live = null } = {}) {
  * depois da escolha, resolve a apresentação (o show da banda). Partidas em grupo não entram no
  * histórico dos discos. Devolve `{ state, results }`.
  */
-export function processParties(state, parties, library, { live = null } = {}) {
+export function processParties(state, parties, library, { live = null, social = null } = {}) {
   const pending = state.pending;
   if (pending?.mode !== 'show') return { state, results: [] };
   const processed = new Set(state.processedPlays);
@@ -137,7 +151,7 @@ export function processParties(state, parties, library, { live = null } = {}) {
         p.players.length > 0,
     );
   if (!party) return { state, results: [] };
-  const resolved = resolveAndSettle(state, { play: null, band: party, library, live });
+  const resolved = resolveAndSettle(state, { play: null, band: party, library, live, social });
   return {
     state: { ...resolved.state, processedPlays: [...processed, party.id] },
     results: [resolved.result],

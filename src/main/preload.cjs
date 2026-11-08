@@ -21,6 +21,8 @@ contextBridge.exposeInMainWorld('api', {
     onChange: on('state:changed'),
   },
   live: { onUpdate: on('live:update') },
+  account: { status: invoke('account:status'), signIn: invoke('account:sign-in'), signOut: invoke('account:sign-out') },
+  social: { neighborhood: invoke('social:neighborhood'), importWeekly: invoke('fretshift:import') },
   day: {
     choose: invoke('day:choose'),
     cancel: invoke('day:cancel'),

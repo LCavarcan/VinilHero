@@ -166,6 +166,11 @@ function card(record, state, view) {
   });
   const badges = el('div', 'badges');
   if (record.mastered) badges.append(el('span', 'badge gold', 'dominado'));
+  if (state.weekly?.song?.id === record.id) {
+    const badge = el('span', 'badge weekly', 'semana');
+    badge.title = state.weekly.active ? 'Disco da semana: movimento ×1,3' : 'Disco da semana (o bônus vale a partir da reputação 50)';
+    badges.append(badge);
+  }
   if (wanted) badges.append(el('span', 'badge wanted', 'pedido'));
   if (record.playedToday) badges.append(el('span', 'badge', `hoje ×${record.playedToday}`));
   const stock = el(
