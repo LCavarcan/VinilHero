@@ -1,6 +1,6 @@
 // Esperando a partida: "Toque <título> no Fretshift". A partida chega sozinha pelo scores.json.
 
-import { button, el } from '../dom.js';
+import { button, cover, el } from '../dom.js';
 import { PERIOD_NAMES } from '../text.js';
 
 const time = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
@@ -18,7 +18,8 @@ export function render(root, state, ui) {
     el(
       'section',
       'screen empty waiting',
-      el('span', 'disc big spinning', ''),
+      // a capa com o vinil saindo e girando, enquanto espera a partida
+      el('div', 'sleeve waiting-sleeve', el('span', 'vinyl', ''), cover({ id: pending.songId, title: pending.title }, 'cover large')),
       el('p', 'label', `${PERIOD_NAMES[pending.period]} · aguardando ${show ? 'o show da banda' : 'a apresentação'}`),
       show
         ? el('h1', null, 'Toque ', el('em', null, pending.title ?? 'o disco'), ' no "Jogar juntos"')
@@ -30,7 +31,10 @@ export function render(root, state, ui) {
       status?.live?.port
         ? el('p', 'muted small', 'Com a "Integração com o VinilHero" ligada nas configurações do Fretshift, a loja reage enquanto você toca.')
         : null,
-      el('div', 'row-buttons', open, button('Cancelar e escolher outro disco', 'ghost', () => ui.act(window.api.day.cancel()))),
+      pending.missing
+        ? el('p', 'warning', 'Esse disco saiu da biblioteca do Fretshift. Cancele e escolha outro disco.')
+        : null,
+      el('div', 'row-buttons', pending.missing ? null : open, button('Cancelar e escolher outro disco', 'ghost', () => ui.act(window.api.day.cancel()))),
     ),
   );
 }

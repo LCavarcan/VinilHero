@@ -73,7 +73,15 @@ vinilhero/
 │   │   ├── requests.js          ← pedidos do dia (gerar e conferir se foram atendidos)
 │   │   ├── events.js            ← evento do dia (sorteio, fator E, Noite de karaokê)
 │   │   ├── stock.js             ← estoque: encomendas, reposição automática, chegada
-│   │   ├── economy.js           ← aluguel, melhorias
+│   │   ├── economy.js           ← aluguel, melhorias e expansões
+│   │   ├── manage.js            ← gestão: disco em destaque, promoções, eventos da loja
+│   │   ├── regulars.js          ← clientes fixos: pedidos, capítulos, visitas
+│   │   ├── stories.js           ← histórias da vizinhança e conversas entre clientes
+│   │   ├── decor.js             ← decoração (só visual)
+│   │   ├── achievements.js      ← conquistas da coleção
+│   │   ├── milestones.js        ← caminho da loja (7 marcos)
+│   │   ├── social.js            ← lojas rivais: referência, disco da semana, resumo da loja
+│   │   ├── live.js              ← ponte ao vivo: eventos da partida → cena
 │   │   ├── day.js               ← máquina de estados do dia (abertura → … → acerto)
 │   │   └── saveFormat.js        ← formato do save, valores iniciais e migração de versão
 │   ├── bridge/                  ← tudo que toca no Fretshift
@@ -83,17 +91,24 @@ vinilhero/
 │   ├── main/
 │   │   ├── main.js              ← janela, IPC, observa o Fretshift
 │   │   ├── game.js              ← o jogo em andamento (save + biblioteca + partidas + core); testável sem Electron
-│   │   ├── saveFile.js          ← save.json com escrita atômica; save estragado vira backup
+│   │   ├── saveFile.js          ← save.json: escrita atômica com fsync, .bak, backups diários, recuperação
+│   │   ├── launch.js            ← abrir o Fretshift e confirmar que o processo nasceu
+│   │   ├── social.js            ← servidor das lojas: cache, validação das respostas, limite de atualização
 │   │   ├── store.js             ← JSON com escrita atômica (copiado do Fretshift)
 │   │   └── preload.cjs          ← API exposta à janela
 │   ├── renderer/
 │   │   ├── index.html
 │   │   ├── app.js               ← troca de telas
 │   │   ├── chart.js             ← gráfico de linha em SVG (Minha loja)
-│   │   ├── screens/             ← escolha.js (+ quadro.js: pedidos e evento), aguardando.js, resultado.js,
-│   │   │                          acerto.js, melhorias.js, estoque.js, minhaloja.js
-│   │   └── scene/               ← loja.js (desenho), atores.js (bonecos e balões), animacao.js (linha do
-│   │                              tempo), sons.js (efeitos sintetizados com WebAudio)
+│   │   ├── screens/             ← escolha.js (+ quadro.js: pedidos e evento; cena.js: a loja agora;
+│   │   │                          conversa.js: conversas), aguardando.js, resultado.js, acerto.js,
+│   │   │                          melhorias.js, decorar.js, estoque.js, gestao.js, minhaloja.js,
+│   │   │                          colecao.js, caderno.js, vizinhanca.js, aovivo.js
+│   │   ├── textos-clientes.js   ← falas e capítulos dos clientes fixos
+│   │   ├── textos-historias.js  ← histórias, conversas e reações
+│   │   └── scene/               ← loja.js (desenho, decoração, luz), atores.js (bonecos e balões),
+│   │                              animacao.js (linha do tempo do resultado), ambiente.js (a loja
+│   │                              funcionando), sons.js (efeitos sintetizados com WebAudio)
 │   └── cli/
 │       └── simular.js           ← simulador de balanceamento (npm run simular)
 └── test/

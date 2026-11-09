@@ -38,6 +38,7 @@ export const PERIOD_NAMES = {
   afternoon: 'Tarde',
   night: 'Noite',
   closing: 'Fim do dia',
+  all: 'O dia todo',
   closed: 'Loja fechada',
 };
 
@@ -77,6 +78,14 @@ export const UPGRADES = {
   neon: { name: 'Letreiro neon', effect: 'A loja aparece de longe: +3 visitantes de base em toda apresentação.' },
   stage: { name: 'Palco', effect: 'Libera o show da banda: tocar no "Jogar juntos" do Fretshift, com 2 a 4 pessoas.' },
   cafe: { name: 'Cafeteria', effect: 'Um café no balcão: 15% dos compradores levam um segundo disco.' },
+  collectorsRoom: {
+    name: 'Sala de colecionadores',
+    effect: 'Uma sala com vitrines para os discos raros: colecionadores vêm 50% mais, pagam 15% mais e até 2 discos dominados a mais vendem sozinhos por período.',
+  },
+  mezzanine: {
+    name: 'Mezanino',
+    effect: 'Um segundo andar em cima das prateleiras: +8 lugares em todas as seções e espaço para o Festival do bairro.',
+  },
 };
 
 export const EVENTS = {
@@ -91,6 +100,116 @@ export const EVENTS = {
   },
   demanding: { name: 'Cliente exigente', effect: 'Um cliente deixou um pedido difícil no quadro. Ele espera 3 dias.' },
   bia: { name: 'Festa da Bia', effect: 'A Bia traz a turma dela à noite: discos rápidos atraem 40% mais gente.' },
+};
+
+/** Conquistas da coleção (src/core/achievements.js). */
+export const ACHIEVEMENTS = {
+  firstShow: { name: 'Primeira apresentação', how: 'Apresentar um disco na loja.' },
+  firstFullCombo: { name: 'Sem errar nenhuma', how: 'Um full combo numa apresentação.' },
+  mastered1: { name: 'Disco dominado', how: '5 estrelas em Difícil ou Expert num disco.' },
+  mastered10: { name: 'Prateleira dourada', how: '10 discos dominados.' },
+  allInstruments: { name: 'Banda de uma pessoa só', how: 'Partidas em guitarra, baixo, bateria e voz.' },
+  hardFive: { name: 'Mão firme', how: '4 estrelas ou mais em Difícil ou Expert em 5 discos.' },
+  allSections: { name: 'De tudo um pouco', how: 'Apresentar discos de todas as seções.' },
+  repertoire25: { name: 'Repertório', how: 'Apresentar 25 discos diferentes na loja.' },
+  requests50: { name: 'O bairro pede, você toca', how: 'Atender 50 pedidos.' },
+  firstHome: { name: 'Da casa', how: 'Um cliente fixo chegar ao capítulo 5.' },
+  firstStory: { name: 'A vizinhança tem história', how: 'Ver uma história da vizinhança até o fim.' },
+  legendary: { name: 'Lendária', how: 'Reputação 75.' },
+  festival: { name: 'Festa na rua', how: 'Fazer um Festival do bairro.' },
+};
+
+/** Decoração (src/core/decor.js): nome e como aparece na loja. */
+export const DECOR_TEXT = {
+  posterRock: { name: 'Pôster de rock', look: 'Raio vermelho no fundo preto. Vai numa das paredes.' },
+  posterBrasil: { name: 'Pôster de MPB', look: 'Verde e amarelo, com um sol. Vai numa das paredes.' },
+  posterEletronica: { name: 'Pôster de eletrônica', look: 'Ondas azuis no roxo. Vai numa das paredes.' },
+  posterSoul: { name: 'Pôster de soul', look: 'Um disco preto no laranja. Vai numa das paredes.' },
+  plant: { name: 'Vaso de planta', look: 'Uma planta na entrada, balançando com o vento da porta.' },
+  rug: { name: 'Tapete', look: 'Um tapete vermelho na frente da vitrine.' },
+  lights: { name: 'Varal de luzes', look: 'Luzinhas coloridas no teto, piscando.' },
+  armchair: { name: 'Poltrona', look: 'Uma poltrona roxa para quem quer ouvir sem pressa.' },
+  jukebox: { name: 'Jukebox', look: 'Uma jukebox antiga, com as luzes correndo.' },
+  dimmer: { name: 'Dimmer', look: 'Libera as cores da luz da loja: neon, fria e pôr do sol.' },
+};
+
+/** Caminho da loja (src/core/milestones.js): o nome de cada marco e de cada condição. */
+export const MILESTONES = {
+  start: { name: 'Lojinha', about: 'Uma porta, duas prateleiras e um toca-discos.' },
+  equipped: { name: 'Equipada', about: 'Som que se ouve da rua e uma vitrine.' },
+  catalog: { name: 'Acervo', about: 'Discos de vários estilos, com espaço para mais.' },
+  ambience: { name: 'Com a sua cara', about: 'Uma loja que dá vontade de ficar.' },
+  spaces: { name: 'Espaços especiais', about: 'Cabine para ouvir e palco para tocar.' },
+  collectors: { name: 'Ponto dos colecionadores', about: 'A sala dos discos raros, e o Seu Afonso de casa.' },
+  reference: { name: 'Referência do bairro', about: 'Lendária, com festival na rua.' },
+};
+
+export const MILESTONE_GOALS = {
+  sound: 'caixa de som',
+  window: 'vitrine',
+  extraShelf: 'uma prateleira extra',
+  sections: 'discos de 4 seções nas prateleiras',
+  decor: '3 itens de decoração',
+  booth: 'cabine de audição',
+  stage: 'palco',
+  collectorsRoom: 'sala de colecionadores',
+  afonso: 'Seu Afonso no capítulo 3',
+  reputation: 'reputação 75',
+  festival: 'um Festival do bairro',
+};
+
+export const LIGHTING_NAMES = { warm: 'Quente', neon: 'Neon', cool: 'Fria', sunset: 'Pôr do sol' };
+
+/** Eventos que a jogadora marca (docs/design/gestao.md). */
+export const STORE_EVENTS = {
+  themeNight: {
+    name: 'Noite temática',
+    effect: 'Uma noite de uma seção só: os fãs dela vêm três vezes mais e tocar um disco dela atrai +25% de gente.',
+    risk: 'Tocar fora do tema, mal (desempenho abaixo de 0,40) ou só pôr pra tocar faz a noite ficar morna: −0,5 de reputação.',
+    success: 'Tocar bem um disco da seção (desempenho 0,60 ou mais): +0,75 de reputação.',
+  },
+  listening: {
+    name: 'Sessão de audição',
+    effect: 'A cabine aberta para ouvir com calma: um pouco menos de gente (−10%), mas quem vem compra 35% mais. Curiosos vêm mais.',
+    risk: 'Sem risco: só não vale a pena se a loja estiver sem estoque.',
+    success: 'Tocando: +0,25 de reputação (gente que ouviu de verdade).',
+  },
+  launch: {
+    name: 'Lançamento de disco',
+    effect: 'Um disco que nunca foi apresentado na loja ganha festa de lançamento: +40% de gente quando ele toca.',
+    risk: 'Não tocar o disco lançado no período, ou só pôr pra tocar: −0,5 de reputação.',
+    success: 'Tocar bem o disco lançado (0,60 ou mais): +0,5 de reputação.',
+  },
+  festival: {
+    name: 'Festival do bairro',
+    effect: 'O dia inteiro: o bairro todo na porta, +50% de gente em todos os períodos. Pede o mezanino, o palco e reputação 60.',
+    risk: 'Só pôr pra tocar em algum período decepciona: −0,5 de reputação naquele período.',
+    success: 'Tocar bem (0,60 ou mais) em cada período: +0,5 de reputação por período.',
+  },
+  collectors: {
+    name: 'Encontro de colecionadores',
+    effect: 'De manhã, colecionadores vêm quatro vezes mais e os discos dominados vendem sozinhos com o dobro da chance.',
+    risk: 'Tocar em Fácil ou só pôr pra tocar decepciona: −0,5 de reputação.',
+    success: 'Difícil ou Expert com 4 estrelas ou mais: +0,75 de reputação.',
+  },
+};
+
+export const STORE_EVENT_REASONS = {
+  booth: 'precisa da cabine de audição',
+  expansion: 'precisa do mezanino e do palco',
+  reputation: 'precisa de mais reputação',
+  cooldown: 'aconteceu há pouco tempo',
+  already: 'já tem um evento marcado hoje',
+  closed: 'não sobrou período livre hoje',
+  noRecord: 'nenhum disco serve agora',
+  money: 'dinheiro insuficiente',
+  debt: 'contas atrasadas',
+};
+
+export const STORE_EVENT_OUTCOME = {
+  success: 'deu certo',
+  neutral: 'passou',
+  flop: 'não deu certo',
 };
 
 const INSTRUMENT_WELL_PLAYED = {
@@ -198,6 +317,31 @@ export const ERRORS = {
   notWaiting: 'Nenhum disco esperando.',
   unknownRecord: 'Disco desconhecido.',
   badCopies: 'Quantidade de cópias inválida.',
+  notInLibrary: 'Esse disco saiu da biblioteca do Fretshift. Escolha outro.',
+  featuredToday: 'O destaque do balcão já foi trocado hoje. Amanhã dá para trocar de novo.',
+  badDiscount: 'Desconto inválido.',
+  badPromotion: 'Promoção inválida.',
+  promotionExists: 'Já tem uma promoção nisso.',
+  tooManyPromotions: 'No máximo duas promoções ao mesmo tempo.',
+  unknownPromotion: 'Essa promoção já acabou.',
+  unknownSection: 'Seção desconhecida.',
+  unknownEvent: 'Evento desconhecido.',
+  noBooth: 'Esse evento precisa da cabine de audição.',
+  event_reputation: 'A loja ainda não tem reputação para esse evento.',
+  event_cooldown: 'Esse evento aconteceu há pouco tempo.',
+  event_already: 'Já tem um evento marcado hoje.',
+  event_closed: 'Não sobrou período livre hoje para esse evento.',
+  event_noRecord: 'Nenhum disco serve para esse evento agora.',
+  event_period: 'Esse evento não pode ser nesse período.',
+  event_section: 'Essa seção não tem discos na prateleira.',
+  event_record: 'Esse disco não pode ser lançado (precisa nunca ter sido apresentado e ter 3 cópias).',
+  noEvent: 'Nenhum evento marcado.',
+  unknownDecor: 'Item desconhecido.',
+  decorOwned: 'Você já tem esse item.',
+  notOwned: 'Compre o item primeiro.',
+  unknownSlot: 'Lugar desconhecido.',
+  unknownLighting: 'Cor de luz desconhecida.',
+  eventStarted: 'O evento já começou: não dá para desmarcar.',
   unexpected: 'Algo deu errado.',
 };
 
@@ -273,6 +417,36 @@ export function reasonText(r) {
       return r.count === 1
         ? 'Um disco dominado vendeu sozinho: colecionador de passagem.'
         : `${r.count} discos dominados venderam sozinhos: colecionadores de passagem.`;
+    case 'store_themeNight':
+      return r.outcome === 'success'
+        ? 'Noite temática: a turma da seção lotou a loja e saiu falando bem.'
+        : r.outcome === 'flop'
+          ? 'Noite temática: quem veio pelo tema não ouviu o que esperava. A noite ficou morna.'
+          : 'Noite temática: a turma veio, ouviu e foi embora sem muito alarde.';
+    case 'store_listening':
+      return r.outcome === 'success' ? 'Sessão de audição: gente ouvindo de olho fechado, comprando com calma.' : 'Sessão de audição: a cabine ficou aberta, mas sem apresentação.';
+    case 'store_launch':
+      return r.outcome === 'success'
+        ? 'Lançamento: o disco novo estreou bem na loja.'
+        : r.outcome === 'flop'
+          ? 'Lançamento: o pessoal veio para o disco novo e ele não tocou direito. Pegou mal.'
+          : 'Lançamento: o disco estreou, mas sem empolgar.';
+    case 'store_collectors':
+      return r.outcome === 'success'
+        ? 'Encontro de colecionadores: os colecionadores aplaudiram de pé (e de chapéu).'
+        : r.outcome === 'flop'
+          ? 'Encontro de colecionadores: torceram o nariz para a apresentação.'
+          : 'Encontro de colecionadores: conversaram mais entre eles do que ouviram.';
+    case 'store_festival':
+      return r.outcome === 'success'
+        ? 'Festival do bairro: a rua inteira dançando na porta da loja.'
+        : r.outcome === 'flop'
+          ? 'Festival do bairro: o público veio para ouvir alguém tocar e só tinha disco rodando.'
+          : 'Festival do bairro: muita gente, mas a apresentação não empolgou.';
+    case 'impulse':
+      return `${plural(r.count, 'cliente levou', 'clientes levaram')} o disco em destaque do balcão por impulso.`;
+    case 'promo':
+      return `Promoção de ${percent.format(r.discount)}: mais gente comprou, cada disco saiu mais barato.`;
     case 'repeat':
       return `${r.times}ª vez desse disco hoje: menos gente parou para ouvir.`;
     case 'fullCombo':
@@ -305,7 +479,17 @@ export function noticeText(n) {
         ? `A vizinhança já te ouviu tocar: +${n.bonus} de reputação pelos discos que você já toca bem no Fretshift.`
         : 'Loja aberta! As partidas antigas do Fretshift entraram no histórico dos discos.';
     case 'saveBroken':
-      return `O save não abriu (${n.error}) e foi guardado como ${n.file}. A loja recomeçou do zero.`;
+      return `O save não abriu (${n.error}) e foi guardado como ${n.file}. Nenhum backup servia: a loja recomeçou do zero.`;
+    case 'saveRecovered':
+      return n.file
+        ? `O save não abriu (${n.error}) e foi guardado como ${n.file}. A loja voltou do backup ${n.from}.`
+        : `O save não estava lá. A loja voltou do backup ${n.from}.`;
+    case 'saveFailed':
+      return `Não deu para gravar a loja (${n.error}). O jogo continua e tenta gravar de novo na próxima ação.`;
+    case 'saveOk':
+      return 'A loja voltou a ser gravada normalmente.';
+    case 'backupFailed':
+      return `O backup do dia não foi gravado (${n.error}). A loja em si está salva.`;
     default:
       return '';
   }

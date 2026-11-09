@@ -8,12 +8,16 @@ import {
   PERIOD_NAMES,
   SECTION_NAMES,
   TAG_NAMES,
+  STORE_EVENTS,
   formatMoney,
   formatP,
+  formatPercent,
   plural,
   requestText,
   stars,
 } from '../text.js';
+import { liveShop } from './cena.js';
+import { talksBoard } from './conversa.js';
 import { eventBanner, focusedRequest, regularsBoard, requestBoard, requestedIds } from './quadro.js';
 
 // o disco selecionado e o pedido em destaque sobrevivem às atualizações da tela
@@ -54,6 +58,33 @@ export function render(root, state, ui) {
       `Escolha um disco para a ${period}. Toque no Fretshift (qualquer instrumento e dificuldade) ou só ponha pra tocar.`,
     ),
   );
+  // biblioteca vazia ou tudo no depósito: sem isso o dia não anda e a tela não diz por quê
+  const lib = state.library ?? { size: records.length, onShelf: records.length };
+  const emptyHint = !lib.size
+    ? el('p', 'warning', 'A biblioteca do Fretshift está vazia. Gere uma música no Fretshift: ela aparece aqui como disco, sozinha.')
+    : !lib.onShelf
+      ? el('p', 'warning', 'Todos os discos estão no depósito. Arraste um disco para uma prateleira para poder tocar.')
+      : null;
+  // evento da loja marcado para hoje
+  const storeEvent = state.manage?.storeEvent;
+  const storeBanner =
+    storeEvent && !storeEvent.done
+      ? el(
+          'div',
+          'event-banner store-event-banner',
+          el('strong', null, `${STORE_EVENTS[storeEvent.id].name} · ${PERIOD_NAMES[storeEvent.period].toLowerCase()}`),
+          el(
+            'span',
+            null,
+            storeEvent.section
+              ? `Toque um disco de ${SECTION_NAMES[storeEvent.section]}. `
+              : storeEvent.title
+                ? `Toque “${storeEvent.title}”. `
+                : '',
+            STORE_EVENTS[storeEvent.id].risk,
+          ),
+        )
+      : null;
   const arrived = Object.values(state.day.arrivals ?? {}).reduce((a, b) => a + b, 0);
   const arrivals = opening && arrived ? el('p', 'arrivals', `Chegaram ${plural(arrived, 'cópia', 'cópias')} da reposição.`) : null;
   const onFocus = (id) => {
@@ -73,14 +104,23 @@ export function render(root, state, ui) {
       )
     : null;
 
+  // a loja funcionando enquanto a jogadora escolhe (some com a preferência "esconder a loja")
+  const scene = localStorage.getItem(SCENE_KEY) === 'off' ? null : liveShop(state);
+  const sceneToggle = button(scene ? 'Esconder a loja' : 'Mostrar a loja', 'ghost small scene-toggle', () => {
+    localStorage.setItem(SCENE_KEY, scene ? 'off' : 'on');
+    render(root, state, ui);
+  });
   const layout = el(
     'div',
     'choose-layout',
-    el('div', 'choose-main', header, eventBanner(state), arrivals, regulars, board, presentations, shelves),
+    el('div', 'choose-main', header, scene?.node, sceneToggle, emptyHint, eventBanner(state), storeBanner, arrivals, talksBoard(state, ui), regulars, board, presentations, shelves),
     panel(state, ui),
   );
   root.replaceChildren(el('section', 'screen', layout));
+  return () => scene?.stop();
 }
+
+const SCENE_KEY = 'vinilhero.cena-escolha';
 
 function sectionBlock(section, state, view) {
   const block = el(
@@ -171,12 +211,15 @@ function card(record, state, view) {
     badges.append(badge);
   }
   if (wanted) badges.append(el('span', 'badge wanted', 'pedido'));
+  if (record.featured) badges.append(el('span', 'badge featured', 'destaque'));
+  if (record.discount) badges.append(el('span', 'badge promo', `−${formatPercent(record.discount)}`));
   if (record.playedToday) badges.append(el('span', 'badge', `hoje ×${record.playedToday}`));
   const stock = el(
     'span',
     `stock${record.stock === 0 ? ' out' : record.stock === 1 ? ' low' : ''}`,
     record.stock === 0 ? 'esgotado' : plural(record.stock, 'cópia', 'cópias'),
     record.onOrder ? el('span', 'muted', ` · +${record.onOrder} amanhã`) : null,
+    record.lots?.length ? el('span', 'muted', ` · lote a caminho`) : null,
   );
   li.append(
     cover(record),
@@ -208,6 +251,40 @@ function stockBox(record, state, ui) {
       record.onOrder ? el('span', 'muted', ` · +${record.onOrder} chegando amanhã`) : null,
     ),
     el('div', 'row-buttons', el('span', 'muted small', 'Repor:'), restock(1), restock(3)),
+  );
+}
+
+/** Destaque no balcão e promoção do disco, no painel. */
+function manageBox(record, state, ui) {
+  const m = state.manage;
+  if (!m) return null;
+  const stored = record.section === 'storage';
+  const locked = m.featured?.lockedToday && m.featured.songId !== record.id;
+  const rules = m.promotionRules;
+  const promo = m.promotions.find((p) => p.kind === 'record' && p.songId === record.id);
+  const canPromo = !stored && !promo && m.promotions.length < rules.max && state.shop.money >= rules.posterCost;
+  return el(
+    'div',
+    'stock-box',
+    record.featured
+      ? el('span', 'positive', 'Em destaque no balcão')
+      : button('Pôr em destaque no balcão', 'ghost small', () => ui.act(window.api.manage.feature({ songId: record.id })), {
+          disabled: stored || locked,
+          title: locked ? 'O destaque já foi trocado hoje' : 'Quem não levar nada pode levar este disco por impulso; tocá-lo atrai 10% mais gente',
+        }),
+    promo
+      ? el('span', 'small', `Em promoção: −${formatPercent(promo.discount)} até o dia ${promo.untilDay}`)
+      : el(
+          'div',
+          'row-buttons',
+          el('span', 'muted small', `Promoção (${rules.days} dias, cartaz ${formatMoney(rules.posterCost)}):`),
+          ...rules.discounts.map((d) =>
+            button(`−${formatPercent(d)}`, 'ghost small', () => ui.act(window.api.manage.promo({ kind: 'record', songId: record.id, discount: d })), {
+              disabled: !canPromo,
+              title: `Preço −${formatPercent(d)}, chance de compra +${formatPercent(rules.elasticity * d)}; a cópia custa o mesmo para repor`,
+            }),
+          ),
+        ),
   );
 }
 
@@ -244,14 +321,22 @@ function panel(state, ui) {
       title: 'A loja recebe o movimento de uma apresentação fraca, sem mudar a reputação.',
     }),
   );
+  // popularidade: posição entre os discos da loja por cópias vendidas
+  const sold = record.sold ?? 0;
+  const rank = sold ? allRecords(state).filter((r) => (r.sold ?? 0) > sold).length + 1 : null;
+  const history = [
+    sold ? `${plural(sold, 'cópia vendida', 'cópias vendidas')}${rank ? ` · ${rank}º mais vendido` : ''}` : 'nenhuma cópia vendida ainda',
+    record.fretshiftPlays ? plural(record.fretshiftPlays, 'partida no Fretshift', 'partidas no Fretshift') : null,
+  ].filter(Boolean);
   return el(
     'aside',
     'panel',
-    cover(record, 'cover large'),
+    el('div', `sleeve${record.featured ? ' featured' : ''}`, el('span', 'vinyl', ''), cover(record, 'cover large')),
     el('h2', 'panel-title', record.title),
     el('div', 'artist', record.artist || 'Artista desconhecido'),
     el('div', 'tags', ...record.tags.map((t) => el('span', 'tag', TAG_NAMES[t] ?? t))),
     el('div', 'muted small', `${SECTION_NAMES[record.section] ?? ''} · ${plural(record.timesPlayed, 'apresentação', 'apresentações')} na loja`),
+    el('div', 'muted small', history.join(' · ')),
     best.length
       ? el(
           'ul',
@@ -269,6 +354,7 @@ function panel(state, ui) {
       ? el('div', 'serves', el('span', 'label', 'Pode atender'), ...serves.map((r) => el('p', 'small', `“${requestText(r)}”`)))
       : null,
     stockBox(record, state, ui),
+    manageBox(record, state, ui),
     actions,
   );
 }

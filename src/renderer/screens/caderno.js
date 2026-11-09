@@ -7,7 +7,9 @@ import { portrait } from '../scene/atores.js';
 import { PERIOD_NAMES, UPGRADES, condText } from '../text.js';
 import { REGULAR_TEXT, unlockHint } from '../textos-clientes.js';
 import { askText } from './quadro.js';
+import { talkContent, talkDialog } from './conversa.js';
 import { chapterDialog } from './resultado.js';
+import { STORY_TEXT } from '../textos-historias.js';
 
 const hearts = (level, max) => el('span', 'hearts', '♥'.repeat(level), el('span', 'empty', '♡'.repeat(Math.max(0, max - level))));
 
@@ -63,6 +65,49 @@ function card(r, state, rerender) {
   );
 }
 
+/** Reler uma história: as conversas já acontecidas, em ordem, numa conversa só. */
+function rereadStory(s, onClose) {
+  const lines = s.seen
+    .filter((st) => st.kind === 'talk')
+    .flatMap((st) => talkContent({ kind: 'story', story: s.id, step: st.step, songTitle: s.songTitle }).lines);
+  talkDialog({ title: STORY_TEXT[s.id]?.title ?? '', lines }, onClose);
+}
+
+/** Histórias da vizinhança: em andamento e terminadas, com o elenco e o botão de reler. */
+function storiesBlock(state, rerender) {
+  const stories = state.stories ?? [];
+  if (!stories.length) return null;
+  return el(
+    'div',
+    'shelf stories',
+    el('div', 'shelf-header', el('h2', null, 'Histórias da vizinhança'), el('span', 'muted small', 'clientes que se conhecem e vivem coisas juntos')),
+    el(
+      'ul',
+      'story-list',
+      ...stories.map((s) =>
+        el(
+          'li',
+          s.done ? 'done' : null,
+          el('div', 'talk-faces', ...s.cast.map((id) => portrait(id))),
+          el(
+            'div',
+            null,
+            el('strong', null, STORY_TEXT[s.id]?.title ?? s.id),
+            el(
+              'p',
+              'muted small',
+              s.done
+                ? `Terminou no dia ${s.doneDay}.`
+                : `Em andamento: passo ${s.step + 1} de ${s.steps}${s.songTitle ? ` · o disco: “${s.songTitle}”` : ''}.`,
+            ),
+          ),
+          s.seen.some((st) => st.kind === 'talk') ? button('Reler', 'ghost small', () => rereadStory(s, rerender)) : null,
+        ),
+      ),
+    ),
+  );
+}
+
 export function render(root, state, ui) {
   const regulars = state.regulars ?? [];
   const met = regulars.filter((r) => r.met).length;
@@ -88,6 +133,7 @@ export function render(root, state, ui) {
         ),
         button('Voltar para a loja', 'ghost', () => ui.closeOverlay()),
       ),
+      storiesBlock(state, rerender),
       el('ul', 'regular-cards', ...regulars.map((r) => card(r, state, rerender)).filter(Boolean)),
     ),
   );

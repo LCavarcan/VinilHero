@@ -2,7 +2,7 @@
 
 import { lineChart } from '../chart.js';
 import { button, cover, el } from '../dom.js';
-import { EVENTS, TITLE_NAMES, formatMoney, formatReputation, plural } from '../text.js';
+import { EVENTS, MILESTONES, MILESTONE_GOALS, TITLE_NAMES, formatMoney, formatReputation, plural } from '../text.js';
 
 // cores validadas contra o fundo escuro dos painéis (#1a1726): ver o skill de dataviz
 const MONEY = '#199e70';
@@ -72,6 +72,7 @@ export function render(root, state, ui) {
     ),
   );
 
+  const path = milestonesBlock(state);
   const tile = (label, value, note) => el('div', null, el('span', 'label', label), el('strong', null, value), note ? el('span', 'muted small', note) : null);
 
   root.replaceChildren(
@@ -84,6 +85,7 @@ export function render(root, state, ui) {
         'muted',
         `${TITLE_NAMES[state.shop.title]} · ${plural(stats.days, 'dia aberto', 'dias abertos')} · ${plural(stats.visitors, 'visitante', 'visitantes')} · ${plural(stats.sales, 'disco vendido', 'discos vendidos')} · ${formatMoney(stats.revenue)} no total`,
       ),
+      path,
       history.length
         ? el(
             'div',
@@ -127,5 +129,45 @@ export function render(root, state, ui) {
           )
         : null,
     ),
+  );
+}
+
+/** Caminho da loja: os 7 marcos, o atual em destaque e o que falta para o próximo. */
+function milestonesBlock(state) {
+  const m = state.milestones;
+  if (!m) return null;
+  const steps = el(
+    'ol',
+    'milestones',
+    ...m.list.map((step, i) =>
+      el(
+        'li',
+        `${step.reached ? 'reached' : ''}${i === m.index ? ' current' : ''}`,
+        el('span', 'milestone-dot', step.reached ? '★' : String(i + 1)),
+        el('span', 'milestone-name', MILESTONES[step.id]?.name ?? step.id),
+      ),
+    ),
+  );
+  const next = m.next;
+  return el(
+    'div',
+    'shelf',
+    el(
+      'div',
+      'shelf-header',
+      el('h2', null, 'Caminho da loja'),
+      el('span', 'muted small', `${MILESTONES[m.current.id]?.name}: ${MILESTONES[m.current.id]?.about}`),
+    ),
+    steps,
+    next
+      ? el(
+          'p',
+          'small',
+          el('strong', null, `Próximo: ${MILESTONES[next.id]?.name}. `),
+          next.goals
+            .map((g) => `${g.progress[0] >= g.progress[1] ? '✓' : '·'} ${MILESTONE_GOALS[g.id] ?? g.id}${g.progress[1] > 1 ? ` (${g.progress[0]}/${g.progress[1]})` : ''}`)
+            .join(' · '),
+        )
+      : el('p', 'small positive', 'A loja chegou ao fim do caminho: é a referência do bairro.'),
   );
 }

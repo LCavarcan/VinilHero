@@ -274,6 +274,80 @@ página).
 - :material-help-circle: **A revisar** depois de jogar: se 2 clientes por dia ocupando 2 dos 3
   períodos ficar apertado; se os capítulos 5 forem difíceis demais.
 
+## Versão 0.5 (etapa 7)
+
+### D-22 · Saves com backup e recuperação
+
+- **Contexto:** um save que não abria era renomeado e a loja **recomeçava do zero**, sem tentar nenhum
+  backup (não havia backup). Um save gravado por uma versão mais nova (depois de voltar para uma
+  antiga) também era tratado como estragado. Uma falha de gravação estourava dentro do observador de
+  arquivos, sem aviso.
+- **Escolha:** `.tmp` com `fsync` + `.bak` da gravação anterior + backup diário em `backups/` (7 dias);
+  ao ler, um save estragado é guardado e a loja volta do `.tmp`, do `.bak` ou do backup diário mais
+  novo, com aviso; save de versão mais nova não abre e não é tocado; falha ao gravar avisa uma vez e
+  tenta de novo a cada ação; o save de uma versão anterior fica guardado como `save.pre-v<N>.json`
+  antes da migração ([Dados](../arquitetura/dados.md#backups-e-recuperacao)).
+- **Por quê:** perder a loja é a pior coisa que pode acontecer num jogo de semanas. Os arquivos são
+  pequenos (centenas de KB); o custo de disco é desprezível.
+
+### D-23 · Gestão: destaque, promoções e eventos da loja
+
+- **Contexto:** a jogadora só decidia o disco do período e as compras. O pedido era mais agência, com
+  efeitos limitados e sem estratégia dominante.
+- **Escolhas:** disco em destaque (impulso de 10% para quem não comprou; +10% de gente tocando ele;
+  troca uma vez por dia); promoção de 10/20/30% por 3 dias (preço cai, chance de compra sobe 1,5×
+  o desconto, cartaz R$ 20); quatro eventos com custo, prazo para repetir, condição de sucesso e de
+  fracasso; teto de ×1,6 para o movimento extra deles juntos; lote do fornecedor (mais barato, chega em
+  2 dias) para a promoção ter sentido ([Gestão](../design/gestao.md)).
+- **Por quê:** cada decisão troca uma coisa por outra (margem por movimento, estoque por impulso,
+  dinheiro e risco de reputação por público). Sem gestão, a apresentação é idêntica (os sorteios nem
+  mudam), então as metas antigas continuam valendo. O simulador ganhou a meta "gestão ajuda, mas não
+  domina" (×1,05 a ×1,3 no dinheiro do 10º dia): resultado ×1,08.
+- **Consequência:** marcar um evento e só pôr o disco pra tocar custa reputação: a única exceção ao
+  [D-07](#d-07-nao-jogar-nao-pune). Marcar é uma promessa para a vizinhança, e quem não marca não corre
+  o risco.
+
+### D-24 · Lucro do dia com todos os gastos
+
+- **Contexto:** o "lucro do dia" do acerto descontava só o aluguel e a reposição automática; a reposição
+  comprada à mão não entrava.
+- **Escolha:** `day.spent` registra reposição à mão, lotes, cartazes e eventos; o acerto mostra "Gestão
+  e reposição à mão" e o lucro desconta.
+- **Por quê:** com promoções e eventos, o lucro sem esses gastos enganaria a jogadora sobre o que vale a
+  pena. O simulador não compra à mão, então as metas não mudam.
+
+### D-25 · Decoração só visual
+
+- **Alternativas:** decoração com bônus pequeno (ambiente atrai mais gente).
+- **Escolha:** a decoração muda só a cena; não mexe em movimento, vendas nem aluguel.
+- **Por quê:** com bônus, a decoração vira mais uma conta a otimizar e deixa de ser escolha de gosto. O
+  marco "Com a sua cara" do caminho da loja dá o motivo para decorar sem obrigar a escolher o item
+  "certo".
+
+### D-26 · Histórias da vizinhança no fluxo das visitas
+
+- **Contexto:** os clientes fixos tinham histórias individuais; o pedido era continuidade entre os dias
+  e relações entre eles, sem virar diálogo aleatório.
+- **Escolha:** histórias com passos (conversa, pedido) que reutilizam as visitas que já existiam (o
+  pedido de história é uma visita do tipo `story`, conta como visita agradada); a memória da história
+  guarda o disco tocado e outro personagem pede aquele disco depois; conversas soltas só com os dois na
+  loja, depois do ponto certo da amizade, uma vez cada ([Histórias](../design/historias.md)).
+- **Por quê:** reaproveitar o quadro "Quem vem hoje", o resultado e a amizade evita uma segunda
+  mecânica paralela; as condições de amizade garantem que ninguém fala de algo que ainda não viveu.
+
+### D-27 · Expansões e caminho da loja
+
+- **Contexto:** depois de comprar todas as melhorias (~dia 20 para quem toca bem), não havia mais o que
+  buscar além de reputação.
+- **Escolha:** duas expansões que mudam o que acontece (sala de colecionadores: quem entra; mezanino:
+  espaço de prateleira em todas as seções), o Festival do bairro como evento de fim de jogo e o caminho
+  da loja em 7 marcos, que juntam equipamento, acervo, decoração, espaços e clientes
+  ([Progressão](../design/progressao.md#caminho-da-loja)). Loja virtual, segunda unidade e funcionários
+  ficam documentados como próximos passos.
+- **Por quê:** "evitar upgrades que sejam apenas aumentos numéricos". As expansões chegam depois das
+  metas de ritmo (reputação 35 e 50), então não mudam a calibragem do começo.
+- :material-help-circle: **A revisar** depois de jogar: a sobra de dinheiro no fim do jogo.
+
 ## Para a usuária decidir :material-help-circle:
 
 | Pergunta | Proposta atual |

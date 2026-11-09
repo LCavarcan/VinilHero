@@ -12,7 +12,12 @@ export function render(root, state, ui) {
     el(
       'section',
       'screen narrow',
-      el('div', 'screen-header row', el('h1', null, 'Melhorias'), button('Voltar para a loja', 'ghost', () => ui.closeOverlay())),
+      el(
+        'div',
+        'screen-header row',
+        el('h1', null, 'Melhorias'),
+        el('div', 'row-buttons', button('Decorar a loja', 'secondary', () => ui.open('decor')), button('Voltar para a loja', 'ghost', () => ui.closeOverlay())),
+      ),
       el('p', 'muted', `Saldo ${formatMoney(state.shop.money)}. Cada melhoria comprada aumenta o aluguel em R$ 15 (hoje: ${formatMoney(state.rent)} por dia).`),
       state.shop.money < 0 ? el('p', 'warning', ERRORS.debt) : null,
       list,

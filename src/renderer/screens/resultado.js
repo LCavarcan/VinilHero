@@ -4,7 +4,9 @@
 import { button, el } from '../dom.js';
 import { drawActor, drawBalloon, portrait } from '../scene/atores.js';
 import { COUNTER_X, SCENE, actorAt, buildTimeline, countersAt } from '../scene/animacao.js';
+import { HOME_X } from '../scene/ambiente.js';
 import { drawShop } from '../scene/loja.js';
+import { liveLook } from './cena.js';
 import { applause, cashRegister, doorBell, setSoundOn, soundOn } from '../scene/sons.js';
 import {
   EVENTS,
@@ -20,9 +22,8 @@ import {
   requestText,
 } from '../text.js';
 import { REGULAR_TEXT, fill } from '../textos-clientes.js';
+import { REACTIONS, STORY_TEXT, fillStory } from '../textos-historias.js';
 
-// onde cada cliente "da casa" fica parado na cena (x, em pixels de loja)
-const HOME_X = { cida: 44, nina: 58, teo: 250, bia: 300, marina: 74, afonso: 96, rita: 286, jorge: 310 };
 
 /** Clientes fixos "da casa" que ficam na loja (menos quem acabou de visitar: esse entra pela porta). */
 function homeRegulars(state, result) {
@@ -30,6 +31,26 @@ function homeRegulars(state, result) {
   return (state.regulars ?? [])
     .filter((r) => r.home && !visiting.has(r.id))
     .map((r) => ({ actor: { regular: r.id, index: 0 }, pose: { x: HOME_X[r.id] ?? 60, base: 101, moving: false, facing: (HOME_X[r.id] ?? 60) > 160 ? -1 : 1 } }));
+}
+
+/**
+ * A fala do cliente fixo no resultado: a da história, a reação ao que está acontecendo na loja (evento
+ * marcado, promoção) ou a de sempre, que lembra da última vez.
+ */
+function lineText(o, text) {
+  const code = o.line?.code;
+  if (code === 'storyDone' || code === 'storyMissed') {
+    const step = STORY_TEXT[o.story]?.steps[o.step];
+    const raw = code === 'storyDone' ? step?.done : step?.missed;
+    if (raw) return fillStory(raw, o.storySongTitle);
+  }
+  // capítulo, primeira visita e "só pôr pra tocar" mantêm a fala própria
+  if (!['chapter', 'passive'].includes(code) && !o.firstVisit) {
+    const reactions = REACTIONS[o.id] ?? {};
+    const reaction = (o.line?.storeEvent && reactions[`event_${o.line.storeEvent}`]) || (o.line?.promo && reactions.promo);
+    if (reaction) return reaction;
+  }
+  return fill(text.lines[code] ?? text.lines.pleased, o.line, INSTRUMENT_NAMES);
 }
 
 const hearts = (level, max = 5) => '♥'.repeat(level) + '♡'.repeat(Math.max(0, max - level));
@@ -44,9 +65,12 @@ function regularsBox(result, state, onChapter) {
   const visits = new Map((state.day?.regulars ?? []).map((v) => [v.id, v]));
   const items = outcomes.map((o) => {
     const text = REGULAR_TEXT[o.id];
-    const line = fill(text.lines[o.line?.code] ?? text.lines.pleased, o.line, INSTRUMENT_NAMES);
+    const line = lineText(o, text);
     const visit = visits.get(o.id);
-    const detail = o.chapterDone
+    const story = o.kind === 'story' ? STORY_TEXT[o.story] : null;
+    const detail = story
+      ? `${story.title}: ${o.pleased ? `atendido! +${formatMoney(o.tip)}` : visit ? regularMissText(visit.cond, o.miss) : 'não foi dessa vez'}`
+      : o.chapterDone
       ? `capítulo ${o.chapterDone}! +${formatMoney(o.tip)} · amizade ${hearts(o.level)}`
       : o.pleased
         ? `gostou! +${formatMoney(o.tip)}`
@@ -110,16 +134,12 @@ export function chapterDialog(id, chapter, onClose) {
   return box;
 }
 
-/** Como a loja aparece na cena: melhorias, evento do dia, discos dominados e a moldura de Lendária. */
+/**
+ * Como a loja aparece na cena: melhorias, evento do dia, discos dominados, a moldura de Lendária e a
+ * loja viva (período da apresentação, decoração, destaque, promoção, evento da loja).
+ */
 export function shopLook(state, result) {
-  const shelf = state.shelves.sections.flatMap((s) => s.records);
-  return {
-    upgrades: state.upgrades,
-    event: result.event ?? null,
-    mastered: shelf.filter((r) => r.mastered).length,
-    legendary: result.shop.title === 'legendary',
-    trophy: !!state.weekly?.lastWeek?.winner?.me,
-  };
+  return liveLook(state, { period: result.period ?? state.day.period, event: result.event ?? null, title: result.shop?.title ?? state.shop.title });
 }
 
 /**

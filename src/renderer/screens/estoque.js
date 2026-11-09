@@ -33,7 +33,7 @@ export function render(root, state, ui) {
       el(
         'p',
         'muted',
-        `Cada venda leva uma cópia. Sem cópia, o cliente procura outro disco da seção; se não achar, vai embora. Repor custa ${formatMoney(price)} por cópia e chega na abertura do dia seguinte.`,
+        `Cada venda leva uma cópia. Sem cópia, o cliente procura outro disco da seção; se não achar, vai embora. Repor custa ${formatMoney(price)} por cópia e chega na abertura do dia seguinte. O lote do fornecedor sai mais barato por cópia (${formatMoney(state.restock.lot.price / state.restock.lot.copies)}), mas demora ${state.restock.lot.days} dias.`,
       ),
       blocked ? el('p', 'warning', ERRORS.debt) : null,
       el('div', 'stock-summary', ...summary),
@@ -61,6 +61,7 @@ export function render(root, state, ui) {
 
 function sectionTable(section, state, ui) {
   const price = state.restock.copyPrice;
+  const lot = state.restock.lot;
   const canPay = (copies) => state.shop.money >= 0 && state.shop.money >= copies * price;
   const rows = [...section.records]
     .sort((a, b) => a.stock - b.stock || (b.sold ?? 0) - (a.sold ?? 0))
@@ -70,7 +71,11 @@ function sectionTable(section, state, ui) {
         r.stock === 0 ? 'out' : null,
         el('td', null, r.title, r.mastered ? el('span', 'badge gold inline', 'dominado') : null),
         el('td', `num${r.stock === 0 ? ' negative' : ''}`, r.stock),
-        el('td', 'num muted', r.onOrder ? `+${r.onOrder}` : ''),
+        el(
+          'td',
+          'num muted',
+          [r.onOrder ? `+${r.onOrder} amanhã` : '', ...(r.lots ?? []).map((l) => `+${l.copies} no dia ${l.arrivesDay}`)].filter(Boolean).join(' · '),
+        ),
         el('td', 'num muted', r.sold ?? 0),
         el(
           'td',
@@ -81,6 +86,10 @@ function sectionTable(section, state, ui) {
               title: formatMoney(copies * price),
             }),
           ),
+          button(`Lote ${lot.copies}`, 'ghost small', () => ui.act(window.api.stock.lot({ songId: r.id })), {
+            disabled: state.shop.money < 0 || state.shop.money < lot.price,
+            title: `${lot.copies} cópias por ${formatMoney(lot.price)} (${formatMoney(lot.price / lot.copies)} cada), chegam em ${lot.days} dias`,
+          }),
         ),
       ),
     );

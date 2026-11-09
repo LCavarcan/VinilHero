@@ -169,6 +169,8 @@ const ICONS = {
   music: { color: '#e84393', rows: ['..111', '..1.1', '..1.1', '111.1', '11.11'] },
   wow: { color: '#f1c40f', rows: ['..1..', '..1..', '..1..', '.....', '..1..'] },
   hmm: { color: '#9d98b5', rows: ['.111.', '1...1', '...1.', '.....', '..1..'] },
+  // conversa na cena ambiente
+  talk: { color: '#5a5470', rows: ['.....', '.....', '1.1.1', '.....', '.....'] },
 };
 
 /** Balão em cima do cliente, enquanto `actor.balloon` estiver valendo em `t`. */

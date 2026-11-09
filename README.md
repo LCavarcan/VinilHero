@@ -4,9 +4,12 @@ Simulador de **loja de discos** que se move com a sua performance no [Fretshift]
 Cada música da sua biblioteca do Fretshift vira um disco na prateleira; tocar bem esse disco no
 Fretshift enche a loja de clientes, vende mais e aumenta a fama da loja.
 
-> **Situação:** as seis etapas feitas: loja jogável, pedidos, estoque e eventos, loja ao vivo com o
-> Fretshift, show da banda, lojas rivais (amigos, referência do disco, disco da semana) e clientes
-> fixos (personagens que voltam e têm história). Roteiro em [`docs/roteiro`](docs/roteiro/index.md).
+> **Situação:** as sete etapas feitas: loja jogável, pedidos, estoque e eventos, loja ao vivo com o
+> Fretshift, show da banda, lojas rivais (amigos, referência do disco, disco da semana), clientes
+> fixos (personagens que voltam e têm história) e a etapa 7: saves com backup e recuperação, gestão
+> (disco em destaque, promoções, eventos da loja), histórias da vizinhança, a loja animada,
+> decoração, coleção com conquistas, expansões e o caminho da loja. Roteiro em
+> [`docs/roteiro`](docs/roteiro/index.md).
 
 ## A ideia em uma frase
 
@@ -18,7 +21,7 @@ melhora a loja, atende clientes, disputa com as lojas dos amigos).
 ```bash
 npm install
 npm start                      # abre o VinilHero (precisa do Fretshift instalado ou da pasta dele)
-npm test                       # lint + testes
+npm test                       # lint + testes (também rodam no CI a cada push e pull request)
 npm run simular -- --metas     # simulador de balanceamento: confere as metas de ritmo
 npm run dist                   # instalador do Windows em dist/ (VinilHero-Setup-<versão>.exe)
 npm run icone                  # refaz build/icon.png
@@ -28,7 +31,9 @@ npm run icone                  # refaz build/icon.png
 
 Baixe `VinilHero-Setup-x.y.z.exe` nos [Releases](https://github.com/LCavarcan/VinilHero/releases/latest)
 e rode. Depois disso o jogo se atualiza sozinho: quando uma versão nova termina de baixar, aparece
-**Reiniciar para atualizar** na barra de cima (ou ela é instalada ao fechar o jogo). A loja fica salva.
+**Reiniciar para atualizar** na barra de cima (ou ela é instalada ao fechar o jogo). A loja fica salva
+em `%APPDATA%\VinilHero`, com um backup por dia fechado em `backups/`: se o save estragar, o jogo volta
+sozinho do backup mais novo e avisa ([detalhes](docs/arquitetura/dados.md#backups-e-recuperacao)).
 
 ### Requisitos do PC
 
@@ -66,6 +71,9 @@ versão nova na próxima vez que abrir (ou em até 6 horas, com o jogo aberto).
 | [Performance → movimento](docs/design/performance.md) | a fórmula, com exemplos numéricos |
 | [Progressão e economia](docs/design/progressao.md) | dinheiro, reputação, melhorias |
 | [Eventos](docs/design/eventos.md) | show da banda, karaokê, disco da semana, cliente exigente |
+| [Gestão da loja](docs/design/gestao.md) | disco em destaque, promoções, eventos da loja, lote do fornecedor |
+| [Histórias da vizinhança](docs/design/historias.md) | clientes que se conhecem, conversas, histórias com continuidade |
+| [Loja viva e coleção](docs/design/loja-viva.md) | a loja animada, decoração, Minha coleção, conquistas |
 | [Arquitetura](docs/arquitetura/index.md) | módulos, tecnologia, fluxo de dados |
 | [Integração com o Fretshift](docs/arquitetura/integracao.md) | arquivos lidos, ponte ao vivo, servidor |
 | [Simulação](docs/arquitetura/simulacao.md) | núcleo determinístico, sorteios com semente |

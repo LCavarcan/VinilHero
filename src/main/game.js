@@ -2,18 +2,35 @@
 // Não depende do Electron (o main.js só liga isto às janelas e ao IPC), então dá para testar.
 
 import { randomInt } from 'node:crypto';
+import { achievementsView } from '../core/achievements.js';
 import { BALANCE } from '../core/balance.js';
+import { currentMilestone, milestonesView } from '../core/milestones.js';
+import { buyDecor, decorLook, decorOptions, placePoster, setLighting, toggleDecor } from '../core/decor.js';
 import { cancel, choose, closeDay, openDay, prepareDay, titleOf } from '../core/day.js';
 import { buy, rent, upgradeOptions } from '../core/economy.js';
 import { applyLiveEvents, liveForPresentation } from '../core/live.js';
+import {
+  activePromotions,
+  cancelStoreEvent,
+  discountFor,
+  endPromotion,
+  featuredId,
+  launchCandidates,
+  scheduleStoreEvent,
+  setFeatured,
+  startPromotion,
+  storeEventOptions,
+} from '../core/manage.js';
 import { importHistory, processParties, processPlays, resolvePassive } from '../core/plays.js';
 import { recordFits, regularsView } from '../core/regulars.js';
 import { isOpenRequest, recordMatches } from '../core/requests.js';
 import { newSave } from '../core/saveFormat.js';
 import { shopSummary } from '../core/social.js';
+import { storiesView } from '../core/stories.js';
 import { moveRecord, shelfRecords, shelfView, syncLibrary } from '../core/shelves.js';
-import { restock, setAutoRestock, topUp } from '../core/stock.js';
-import { readSave, writeSave } from './saveFile.js';
+import { buyLot, lotsFor, restock, setAutoRestock, topUp } from '../core/stock.js';
+import { backupDay, readSave, writeSave } from './saveFile.js';
+import { GameError } from '../core/shelves.js';
 
 export function createGame({ file, now = () => new Date().toISOString(), randomSeed = () => randomInt(2 ** 32) }) {
   let state = null;
@@ -22,12 +39,40 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
   let unseen = [];
   let notices = [];
   let lastSummary = null;
+  // partidas do Fretshift por disco (vezes, última, instrumentos), lidas do scores.json: a fonte é o
+  // Fretshift, o save não guarda uma cópia (só na memória)
+  let playStats = {};
+  function countPlays(plays) {
+    const stats = {};
+    for (const p of plays) {
+      if (!p?.songId) continue;
+      const s = (stats[p.songId] ??= { count: 0, lastPlayedAt: null, instruments: [] });
+      s.count += 1;
+      if (!s.lastPlayedAt || (Date.parse(p.playedAt) || 0) > (Date.parse(s.lastPlayedAt) || 0)) s.lastPlayedAt = p.playedAt ?? null;
+      if (p.instrument && !s.instruments.includes(p.instrument)) s.instruments.push(p.instrument);
+    }
+    playStats = stats;
+  }
   // ponte ao vivo: a partida do disco pendente acontecendo agora no Fretshift (só na memória)
   let live = null;
   // lojas rivais (etapa 5), do servidor: rivais por disco e o disco da semana (só na memória)
   const social = { rivals: {}, weekly: null };
 
-  const persist = () => writeSave(file, state);
+  // falha ao gravar (disco cheio, pasta sem permissão): o jogo continua com a loja na memória, avisa
+  // uma vez e tenta de novo na próxima mudança
+  let saveError = null;
+  function persist() {
+    try {
+      writeSave(file, state);
+      if (saveError) notices.push({ code: 'saveOk' });
+      saveError = null;
+      return true;
+    } catch (err) {
+      if (!saveError) notices.push({ code: 'saveFailed', error: err.message });
+      saveError = err.message;
+      return false;
+    }
+  }
   const findRecord = (id) => library.find((r) => r.id === id);
 
   const songTitleOf = (id) => (id ? (findRecord(id)?.title ?? null) : null);
@@ -41,6 +86,8 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
       regulars: (result.regulars ?? []).map((o) => ({
         ...o,
         line: { ...o.line, lastSongTitle: songTitleOf(o.line?.lastSongId) },
+        // pedido de história com um disco lembrado ({disco} nas falas)
+        storySongTitle: songTitleOf(o.cond?.songId),
         level: state.regulars?.[o.id]?.level ?? 0,
       })),
       record: { id: result.songId, title: record?.title ?? null, artist: record?.artist ?? null },
@@ -50,6 +97,7 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
   }
 
   function applyPlays(plays) {
+    countPlays(plays);
     return applyOutcome(processPlays(state, plays, library, { live: liveForPresentation(live, state.pending), social }));
   }
 
@@ -75,8 +123,12 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
   /** Abre (ou cria) a loja com a biblioteca e as partidas do Fretshift. */
   function start(summaries, plays, parties = []) {
     library = summaries;
+    countPlays(plays);
+    // save de versão mais nova: lança e a loja não abre (o arquivo fica intacto)
     const read = readSave(file);
-    if (read.broken) notices.push({ code: 'saveBroken', file: read.broken, error: read.error });
+    if (read.recoveredFrom && !read.interrupted) {
+      notices.push({ code: 'saveRecovered', file: read.broken, from: read.recoveredFrom, error: read.error });
+    } else if (read.broken) notices.push({ code: 'saveBroken', file: read.broken, error: read.error });
     state = syncLibrary(read.save ?? newSave(randomSeed(), now()), library);
     // evento e pedidos do dia (na primeira abertura, ou num save da versão anterior)
     state = prepareDay(state, library);
@@ -99,7 +151,18 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
     const shelves = shelfView(state, library);
     const playedToday = state.day.playedToday;
     const orders = state.restock.orders;
-    const withToday = (r) => ({ ...r, playedToday: playedToday[r.id] ?? 0, onOrder: orders[r.id] ?? 0 });
+    const featured = featuredId(state);
+    const withToday = (r) => ({
+      ...r,
+      playedToday: playedToday[r.id] ?? 0,
+      onOrder: orders[r.id] ?? 0,
+      // lotes do fornecedor a caminho: cópias e o dia em que chegam
+      lots: lotsFor(state, r.id).map((l) => ({ copies: l.copies, arrivesDay: l.arrivesDay })),
+      featured: r.id === featured,
+      fretshiftPlays: playStats[r.id]?.count ?? 0,
+      lastPlayedAt: playStats[r.id]?.lastPlayedAt ?? null,
+      discount: discountFor(state, r),
+    });
     const shelf = shelfRecords(state, library);
     // pedidos do quadro: os abertos com os discos da prateleira que podem atendê-los
     const requests = state.day.requests.map((r) => ({
@@ -115,18 +178,42 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
       songTitle: songTitleOf(v.cond.songId) ?? undefined,
       matches: shelf.filter((rec) => recordFits(v.cond, rec)).map((rec) => rec.id),
     }));
+    // o disco que a história lembrou (o primeiro guardado), para as falas com {disco}
+    const storySong = (id) => songTitleOf(Object.values(state.stories?.[id]?.memory ?? {})[0]);
+    const talks = (state.day.talks ?? []).map((t) => (t.story ? { ...t, songTitle: storySong(t.story) } : t));
+    const stories = storiesView(state).map((s) => ({ ...s, songTitle: storySong(s.id) }));
     const regulars = regularsView(state).map((r) => ({
       ...r,
       bestSongTitle: songTitleOf(state.regulars?.[r.id]?.last?.songId),
     }));
     return {
-      day: { ...state.day, requests, regulars: visits },
+      day: { ...state.day, requests, regulars: visits, talks },
       regulars,
+      stories,
       shop: { ...state.shop, title: titleOf(state.shop.reputation) },
-      pending: state.pending && { ...state.pending, title: findRecord(state.pending.songId)?.title ?? null },
+      // `missing`: o disco saiu da biblioteca do Fretshift depois da escolha (só dá para cancelar)
+      pending: state.pending && {
+        ...state.pending,
+        title: findRecord(state.pending.songId)?.title ?? null,
+        missing: !findRecord(state.pending.songId),
+      },
+      library: { size: library.length, onShelf: shelf.length },
       rent: rent(state),
       upgrades: state.upgrades,
-      restock: { auto: state.restock.auto, copyPrice: BALANCE.stock.copyPrice, orders },
+      restock: { auto: state.restock.auto, copyPrice: BALANCE.stock.copyPrice, orders, lot: BALANCE.stock.lot },
+      // gestão: destaque, promoções, eventos da loja (docs/design/gestao.md)
+      manage: {
+        featured: state.featured
+          ? { ...state.featured, title: songTitleOf(state.featured.songId), active: !!featured, lockedToday: state.featured.day === state.day.number }
+          : null,
+        promotions: activePromotions(state).map((p) => ({ ...p, title: p.songId ? songTitleOf(p.songId) : undefined })),
+        promotionRules: BALANCE.promotions,
+        storeEvent: state.day.storeEvent
+          ? { ...state.day.storeEvent, title: state.day.storeEvent.songId ? songTitleOf(state.day.storeEvent.songId) : undefined }
+          : null,
+        storeEvents: storeEventOptions(state, shelf),
+        launchCandidates: launchCandidates(state, shelf).map((r) => ({ id: r.id, title: r.title, section: r.section })),
+      },
       upgradeOptions: upgradeOptions(state),
       shelves: {
         sections: shelves.sections.map((s) => ({ ...s, records: s.records.map(withToday) })),
@@ -137,6 +224,10 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
         inLibrary: !!social.weekly.song && !!findRecord(social.weekly.song.id),
         active: state.shop.reputation >= BALANCE.weekly.minReputation,
       },
+      // decoração e coleção (docs/design/loja-viva.md)
+      decor: { options: decorOptions(state), look: decorLook(state), lighting: state.decor?.lighting ?? 'warm', posters: decorLook(state).posters },
+      achievements: achievementsView(state),
+      milestones: { list: milestonesView(state), ...currentMilestone(state) },
       lastSummary: state.day.period === 'closed' ? (lastSummary ?? state.history.at(-1) ?? null) : null,
       history: state.history,
       stats: state.stats,
@@ -194,6 +285,8 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
       return live;
     },
     choose({ songId, mode }) {
+      // a janela pode estar com uma prateleira velha: o disco precisa continuar na biblioteca
+      if (!findRecord(songId)) throw new GameError('notInLibrary');
       state = choose(state, { songId, mode, now: now() });
       live = null;
       if (mode === 'passive') {
@@ -212,7 +305,13 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
       const out = closeDay(state);
       state = out.state;
       lastSummary = out.summary;
-      persist();
+      if (persist()) {
+        try {
+          backupDay(file, state);
+        } catch (err) {
+          notices.push({ code: 'backupFailed', error: err.message });
+        }
+      }
       return view();
     },
     openDay() {
@@ -221,6 +320,16 @@ export function createGame({ file, now = () => new Date().toISOString(), randomS
     },
     restock: ({ songId, copies }) => change((s) => restock(s, songId, copies)),
     setAutoRestock: ({ auto }) => change((s) => setAutoRestock(s, auto)),
+    buyLot: ({ songId }) => change((s) => buyLot(s, songId)),
+    buyDecor: ({ id }) => change((s) => buyDecor(s, id)),
+    placePoster: ({ slot, id }) => change((s) => placePoster(s, slot, id ?? null)),
+    toggleDecor: ({ id }) => change((s) => toggleDecor(s, id)),
+    setLighting: ({ lighting }) => change((s) => setLighting(s, lighting)),
+    setFeatured: ({ songId }) => change((s) => setFeatured(s, songId ?? null)),
+    startPromotion: (promo) => change((s) => startPromotion(s, promo)),
+    endPromotion: ({ id }) => change((s) => endPromotion(s, id)),
+    scheduleEvent: (event) => change((s) => scheduleStoreEvent(s, event, shelfRecords(s, library))),
+    cancelEvent: () => change(cancelStoreEvent),
     /** Completa até 3 cópias de cada disco da prateleira, os mais vendidos primeiro, enquanto der. */
     topUp: () =>
       change((s) => {

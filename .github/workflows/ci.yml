@@ -1,0 +1,55 @@
+name: Testes
+
+# a cada push e pull request: lint, testes, metas do balanceamento e o build do Windows (sem publicar).
+# A versão (instalador + Release) continua no release.yml, disparado pela tag.
+on:
+  push:
+    branches: ['**']
+    tags-ignore: ['v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Metas do balanceamento
+        run: npm run simular -- --metas
+
+  build:
+    needs: testes
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # monta o app empacotado (pasta, sem instalador): pega arquivo faltando no "files" do package.json
+      - run: npx electron-builder --win --dir --publish never
+      - name: O app empacotado tem o core, a janela e a ponte
+        shell: bash
+        run: |
+          npx asar list dist/win-unpacked/resources/app.asar | tr "\\\\" "/" > files.txt
+          for f in /src/main/main.js /src/main/preload.cjs /src/core/simulation.js /src/renderer/index.html /src/bridge/liveServer.js /package.json; do
+            grep -qx "$f" files.txt || { echo "falta $f no app empacotado"; exit 1; }
+          done
+          if grep -q '^/src/cli/' files.txt; then echo "o simulador não deveria ir no app"; exit 1; fi

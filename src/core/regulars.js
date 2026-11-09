@@ -232,7 +232,7 @@ function concrete(option, shelf, rng) {
   return { ...rest, songId: candidates[Math.floor(rng() * candidates.length)].id };
 }
 
-function chooseOption(options, shelf, rng) {
+export function chooseOption(options, shelf, rng) {
   const possible = options.map((o) => concrete(o, shelf, rng)).filter(Boolean);
   return possible.length ? possible[Math.floor(rng() * possible.length)] : null;
 }
@@ -262,19 +262,24 @@ export function requestFor(c, entry, state, shelf, rng) {
 const regularsSeed = (state) => seedFrom(state.seed, 'fixos', state.day.number);
 
 /**
- * Quem vem hoje (no máximo 1 por dia, 2 a partir da reputação 20, nunca dois no mesmo período):
- * os que estão esperando há mais tempo primeiro. Quem aparece pela primeira vez vem assim que é
- * liberado. Devolve `{ visits, regulars }` (o pedido de capítulo sorteado fica guardado no save).
+ * Quem vem hoje (no máximo 1 por dia, 2 a partir da reputação 10, nunca dois no mesmo período):
+ * quem tem um pedido de história vencido primeiro (`asks`, de stories.js), depois os que estão
+ * esperando há mais tempo. Quem aparece pela primeira vez vem assim que é liberado. Devolve
+ * `{ visits, regulars }` (o pedido de capítulo sorteado fica guardado no save).
  */
-export function todaysVisits(state, shelf) {
+export function todaysVisits(state, shelf, asks = {}) {
   const rng = mulberry32(regularsSeed(state));
   const day = state.day.number;
   const regulars = { ...(state.regulars ?? {}) };
   const limit = state.shop.reputation >= R.perDayLaterReputation ? R.perDayLater : R.perDay;
   const due = REGULARS.filter((c) => {
     const entry = regulars[c.id];
+    if (asks[c.id] && entry?.met) return true;
     return (entry?.met || isUnlocked(c, state)) && (entry?.nextVisitDay ?? day) <= day;
-  }).sort((a, b) => (regulars[a.id]?.nextVisitDay ?? day) - (regulars[b.id]?.nextVisitDay ?? day));
+  }).sort(
+    (a, b) =>
+      (asks[b.id] ? 1 : 0) - (asks[a.id] ? 1 : 0) || (regulars[a.id]?.nextVisitDay ?? day) - (regulars[b.id]?.nextVisitDay ?? day),
+  );
   const visits = [];
   const taken = new Set();
   for (const c of due) {
@@ -282,7 +287,11 @@ export function todaysVisits(state, shelf) {
     const free = PERIODS.filter((p) => !taken.has(p));
     const period = c.period ?? free[Math.floor(rng() * free.length)];
     if (!period || taken.has(period)) continue;
-    const request = requestFor(c, regulars[c.id], state, shelf, rng);
+    // pedido de história: vem por causa dela (a gorjeta e a amizade contam como numa visita agradada)
+    const ask = asks[c.id];
+    const request = ask
+      ? { kind: 'story', story: ask.story, step: ask.step, chapter: null, cond: ask.cond, tip: ask.tip, blockedBy: null }
+      : requestFor(c, regulars[c.id], state, shelf, rng);
     if (!request) continue;
     if (request.kind === 'chapter') regulars[c.id] = { ...newRegularEntry(), ...regulars[c.id], chapterCond: request.cond };
     taken.add(period);
@@ -299,10 +308,17 @@ export function newRegularEntry() {
 
 const round2 = (x) => Math.round(x * 100) / 100;
 
-/** Qual fala o cliente usa, lembrando da última apresentação para ele. */
-function lineFor(entry, { passive, record, play, P, pleased, chapterDone }) {
+/**
+ * Qual fala o cliente usa, lembrando da última apresentação para ele. `context`: o que mais está
+ * acontecendo na loja (evento marcado, promoção no disco), para quem tiver uma reação a isso.
+ */
+function lineFor(entry, { passive, record, play, P, pleased, chapterDone, story }, context = {}) {
   const last = entry?.last ?? null;
-  const memory = last ? { lastSongId: last.songId, lastDay: last.day, lastInstrument: last.instrument, lastStars: last.stars } : {};
+  const memory = {
+    ...(last ? { lastSongId: last.songId, lastDay: last.day, lastInstrument: last.instrument, lastStars: last.stars } : {}),
+    ...context,
+  };
+  if (story) return { code: pleased ? 'storyDone' : 'storyMissed', story: story.story, step: story.step, ...memory };
   if (passive) return { code: 'passive', ...memory };
   if (chapterDone) return { code: 'chapter', ...memory };
   if (last?.songId === record.id) return { code: 'sameRecord', ...memory };
@@ -317,7 +333,7 @@ function lineFor(entry, { passive, record, play, P, pleased, chapterDone }) {
  * para cada pessoa da banda; atende se alguém atende). Devolve um resultado por visita (a compra do
  * cliente fica com a simulação).
  */
-export function resolveVisits(state, { period, record, each, show, passive }) {
+export function resolveVisits(state, { period, record, each, show, passive, context = {} }) {
   const visits = (state.day.regulars ?? []).filter((v) => v.period === period && !v.done);
   return visits.map((v) => {
     const entry = state.regulars?.[v.id];
@@ -330,6 +346,7 @@ export function resolveVisits(state, { period, record, each, show, passive }) {
       archetype: regularOf(v.id)?.archetype ?? 'curious',
       kind: v.kind,
       chapter: v.chapter,
+      ...(v.kind === 'story' ? { story: v.story, step: v.step, cond: v.cond } : {}),
       pleased: ok,
       chapterDone,
       firstVisit: !entry?.met,
@@ -338,7 +355,11 @@ export function resolveVisits(state, { period, record, each, show, passive }) {
       // reputação extra da recompensa (a resenha do Jorge), fora da redução perto do topo
       bonusReputation: perk?.reputation ?? 0,
       miss: ok ? null : condMiss(v.cond, { ...lead, show }),
-      line: lineFor(entry, { passive, record, play: lead.play, P: lead.P, pleased: ok, chapterDone }),
+      line: lineFor(
+        entry,
+        { passive, record, play: lead.play, P: lead.P, pleased: ok, chapterDone, story: v.kind === 'story' ? v : null },
+        context,
+      ),
       play: passive || !lead.play ? null : { songId: record.id, instrument: lead.play.instrument, difficulty: lead.play.difficulty, stars: lead.play.stars ?? 0, P: round2(lead.P) },
     };
   });
