@@ -1,6 +1,6 @@
 # Roteiro
 
-Seis etapas. Cada uma termina com algo **jogável ou verificável** e com os testes passando
+Sete etapas. Cada uma termina com algo **jogável ou verificável** e com os testes passando
 (`npm test`).
 
 | Etapa | Resultado | Muda o Fretshift? | Situação |
@@ -11,6 +11,7 @@ Seis etapas. Cada uma termina com algo **jogável ou verificável** e com os tes
 | [4. Loja ao vivo](etapa4.md) | loja reage durante a música, show da banda, "Tocar no Fretshift" | **sim** (opcional) | feita; falta publicar o Fretshift 0.2.0 e jogar com a ponte ligada |
 | [5. Lojas rivais](etapa5.md) | lojas dos amigos, referência do disco, disco da semana | **sim** (servidor) | feita; falta publicar o servidor e o Fretshift 0.3.0 e testar com uma amiga |
 | [6. Clientes fixos](etapa6.md) | personagens que voltam, lembram das apresentações e têm história | não | feita; falta jogar uma semana e revisar os textos |
+| [7. Loja viva (v0.5)](etapa7.md) | saves seguros, gestão, histórias da vizinhança, loja animada, decoração, coleção, expansões | não | feita; falta jogar uma semana e revisar os textos |
 
 ```mermaid
 flowchart LR
@@ -19,6 +20,7 @@ flowchart LR
     E2 --> E4[4. Ao vivo]
     E3 --> E5[5. Rivais]
     E3 --> E6[6. Clientes fixos]
+    E6 --> E7[7. Loja viva]
     E4 -.->|show da banda usa o palco da etapa 3| E3
 ```
 

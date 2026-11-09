@@ -66,8 +66,61 @@ a ser positivo. Uma faixa na loja avisa: *"Contas atrasadas: uma boa apresentaç
 | Cabine de audição | karaokeiro com peso ×1,5; libera a Noite de karaokê | R$ 900 | — |
 | Palco | libera o [Show da banda](eventos.md#show-da-banda) | R$ 1 500 | reputação 25 |
 | Cafeteria | 15% dos compradores levam um segundo disco | R$ 2 000 | reputação 40 |
+| Sala de colecionadores | colecionadores ×1,5 no peso e ×1,15 no preço; até 2 discos dominados a mais vendem sozinhos por período | R$ 3 500 | reputação 35 |
+| Mezanino | +1 prateleira (8 lugares) em **todas** as seções; libera o Festival do bairro | R$ 6 000 | reputação 50 |
 
-Cada melhoria aparece na cena da loja.
+Cada melhoria aparece na cena da loja (a sala de colecionadores vira a vitrine de raros da prateleira da
+direita, com vidro e lombadas douradas; o mezanino é um piso com guarda-corpo e escada em cima das
+prateleiras).
+
+## Expansões
+
+As duas últimas melhorias são **expansões**: chegam no meio do jogo (o simulador, perfil "bom", compra
+a sala por volta do dia 12 e o mezanino por volta do dia 20) e mudam o que acontece na loja, não só um
+número. A sala muda **quem entra** (mais colecionadores, que pagam mais) e dá destino aos discos
+dominados; o mezanino resolve o "depósito cheio" de bibliotecas grandes de uma vez e abre espaço para o
+evento de fim de jogo.
+
+Ficam para depois, de propósito (precisam de uma mecânica própria, não de mais um multiplicador):
+
+- **Loja virtual**: vender pelo correio com o jogo fechado vai contra o "dia por apresentações"
+  ([D-03](../decisoes/index.md#d-03-dia-por-apresentacoes-nao-pelo-relogio)); precisaria de um desenho
+  que não puna quem não abre o jogo.
+- **Segunda unidade**: um segundo save dentro do save; o custo de interface é alto para uma pessoa só.
+- **Funcionários**: só fazem sentido se houver tarefa repetitiva a delegar (hoje a reposição automática
+  já cobre a principal).
+- **Estúdio de audição**: a cabine e a sessão de audição já fazem esse papel.
+
+## Festival do bairro
+
+O evento de fim de jogo ([Gestão](gestao.md#eventos-da-loja)): pede o mezanino, o palco e reputação 60;
+custa R$ 1 500; vale **o dia inteiro** (marcado antes da primeira apresentação), com +50% de gente em
+todos os períodos. Cada período tocado bem (P ≥ 0,6) dá +0,5 de reputação; "só pôr pra tocar" em algum
+período tira 0,5. Repete a cada 7 dias. No fim do jogo, quando o dinheiro sobra, é um uso divertido
+para ele.
+
+## Caminho da loja
+
+Objetivos além do dinheiro: 7 marcos (`src/core/milestones.js`), em ordem, mostrados em **Minha loja**
+com o que falta para o próximo. O dia em que cada um foi alcançado fica guardado no acerto (e o
+resumo do dia avisa). Um marco só conta depois do anterior, e quem chegou não volta.
+
+| Marco | Pede |
+|---|---|
+| 1. Lojinha | (começo) |
+| 2. Equipada | caixa de som e vitrine |
+| 3. Acervo | uma prateleira extra e discos de 4 seções nas prateleiras |
+| 4. Com a sua cara | 3 itens de decoração ([Loja viva](loja-viva.md#decoracao)) |
+| 5. Espaços especiais | cabine de audição e palco |
+| 6. Ponto dos colecionadores | sala de colecionadores e o Seu Afonso no capítulo 3 |
+| 7. Referência do bairro | reputação 75 e um Festival do bairro |
+
+### Sobra de dinheiro no fim do jogo
+
+O simulador mostra o saldo crescendo ~R$ 1 300 por dia depois do dia 30 para quem toca bem. O festival
+(R$ 1 500 por semana), as expansões e a decoração dão destino a parte disso, mas não tudo. Fica
+registrado como ponto a revisar depois de jogar: se faltar objetivo para o dinheiro, o próximo passo é
+uma expansão nova com mecânica própria (ver a lista acima), não um preço maior.
 
 ## Discos dominados
 

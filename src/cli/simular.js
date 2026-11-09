@@ -7,8 +7,10 @@
 
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { BALANCE } from '../core/balance.js';
 import { closeDay, choose, openDay, prepareDay, titleOf } from '../core/day.js';
 import { buy, rent, upgradeOptions } from '../core/economy.js';
+import { scheduleStoreEvent, setFeatured, startPromotion, storeEventIn, storeEventOptions } from '../core/manage.js';
 import { processPlays, resolvePassive } from '../core/plays.js';
 import { DIFFICULTIES, SECTIONS } from '../core/records.js';
 import { REGULAR_IDS, recordFits } from '../core/regulars.js';
@@ -24,6 +26,8 @@ export const PROFILES = {
   fraco: { mean: 0.3, sd: 0.1, difficulty: 'Medium', label: 'P ~ N(0,3; 0,1), Médio' },
   medio: { mean: 0.5, sd: 0.1, difficulty: 'Medium', label: 'P ~ N(0,5; 0,1), Médio' },
   bom: { mean: 0.8, sd: 0.08, difficulty: 'Medium', label: 'P ~ N(0,8; 0,08), Médio' },
+  // a mesma jogadora, usando destaque, promoções e a noite temática (docs/design/gestao.md)
+  bom_gestao: { mean: 0.8, sd: 0.08, difficulty: 'Medium', manage: true, label: 'P ~ N(0,8; 0,08), Médio, com gestão' },
   expert: { mean: 0.8, sd: 0.08, difficulty: 'Expert', label: 'P ~ N(0,8; 0,08), Expert' },
   expert70: { mean: 0.7, sd: 0, difficulty: 'Expert', label: 'P = 0,7, Expert' },
   perfeito_facil: { mean: 1, sd: 0, difficulty: 'Easy', label: 'P = 1, Fácil, full combo' },
@@ -123,6 +127,12 @@ function pickSong(state, shelf, next, { passive }) {
       const options = (Array.isArray(wanted) ? wanted : wanted ? [wanted] : []).filter((i) => song.instruments.includes(i));
       return { song, instrument: options[0] };
     }
+    // evento da loja do período: toca o tema da noite ou o disco lançado
+    const event = storeEventIn(state, period);
+    if (event?.songId || event?.section) {
+      const song = shelf.find((r) => (event.songId ? r.id === event.songId : fresh(r) && r.section === event.section));
+      if (song) return { song, instrument: undefined };
+    }
     const open = state.day.requests.filter((r) => isOpenRequest(r, state.day.number) && (!r.period || r.period === period));
     for (const request of open) {
       // o cliente exigente pede full combo: a jogadora fictícia não tenta
@@ -136,6 +146,36 @@ function pickSong(state, shelf, next, { passive }) {
   const song = next();
   const karaoke = state.day.event === 'karaoke' && period === 'night' && song.instruments.includes('vocals');
   return { song, instrument: karaoke ? 'vocals' : undefined };
+}
+
+/**
+ * Gestão da jogadora fictícia, na abertura do dia: o disco com mais cópias em destaque; uma noite
+ * temática da maior seção a cada 3 dias (se sobrar dinheiro para o aluguel); uma promoção de 20% na
+ * maior seção uma vez por semana.
+ */
+function manageDay(state, shelf) {
+  const try_ = (fn) => {
+    try {
+      return fn();
+    } catch {
+      return state;
+    }
+  };
+  const top = [...shelf].sort((a, b) => (b.stock ?? 0) - (a.stock ?? 0))[0];
+  if (top) state = try_(() => setFeatured(state, top.id));
+  const counts = {};
+  for (const r of shelf) counts[r.section] = (counts[r.section] ?? 0) + 1;
+  const section = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (!section) return state;
+  const reserve = rent(state) * 2;
+  const night = storeEventOptions(state, shelf).find((o) => o.id === 'themeNight');
+  if (night.ok && state.shop.money - night.cost >= reserve) {
+    state = try_(() => scheduleStoreEvent(state, { id: 'themeNight', period: 'night', section }, shelf));
+  }
+  if (state.day.number % 7 === 1 && state.shop.money >= reserve + 50) {
+    state = try_(() => startPromotion(state, { kind: 'section', section, discount: 0.2 }));
+  }
+  return state;
 }
 
 /** Joga `days` dias com um perfil. Devolve um registro por dia. */
@@ -156,6 +196,7 @@ export function simulate({ profile, days, librarySize, seed, purchases = true, a
   for (let d = 0; d < days; d++) {
     if (state.day.period === 'closed') state = openDay(state, { library });
     if (state.day.event) events.add(state.day.event);
+    if (profile.manage) state = manageDay(state, shelf());
     for (let p = 0; p < 3; p++) {
       const { song, instrument } = pickSong(state, shelf(), next, profile);
       const now = START + d * DAY_MS + p * 3600000;
@@ -254,7 +295,7 @@ function printRun(name, opts) {
   console.log('dia  faturamento gorjetas estoque   lucro    saldo  reputação pedidos esgotados  melhorias (semente 0)');
   for (const d of s.perDay.filter((d) => d.day <= 10 || d.day % 5 === 0)) {
     const u = d.upgrades;
-    const up = [`som ${u.sound}`, `vitrine ${u.window}`, ...['neon', 'booth', 'stage', 'cafe'].filter((k) => u[k])].join(', ');
+    const up = [`som ${u.sound}`, `vitrine ${u.window}`, ...['neon', 'booth', 'stage', 'cafe', 'collectorsRoom', 'mezzanine'].filter((k) => u[k])].join(', ');
     const requests = `${d.requestsDone.toFixed(1)}/${(d.requestsDone + d.requestsMissed).toFixed(1)}`;
     console.log(
       `${String(d.day).padStart(3)}  ${brl(d.revenue).padStart(10)} ${brl(d.tips).padStart(8)} ${brl(d.restock).padStart(7)} ${brl(d.profit).padStart(7)}  ${brl(d.money).padStart(7)}  ${d.reputation.toFixed(1).padStart(9)} ${requests.padStart(7)} ${d.soldOut.toFixed(1).padStart(9)}  ${up}`,
@@ -276,7 +317,11 @@ export function targets({ days = 40, librarySize = 30, seeds = 100 } = {}) {
   const passive = run('passivo', false);
   const medium = run('medio', false);
   const good = run('bom', false);
+  const managed = run('bom_gestao', false);
   const expert = run('expert', false);
+  // gestão: o dinheiro no 10º dia (inclui o custo dos eventos e cartazes), comparado sem gestão
+  const money10 = (s) => s.perDay[9].money - BALANCE.start.money;
+  const manageRatio = money10(managed) / money10(good);
   const expertRatio = expert.profit10 / good.profit10;
   // movimento com a mesma reputação, à tarde (pilar 5: Fácil perfeito ≈ Expert com P 0,7)
   const moves = (P, difficulty) => visitorCount({ P, difficulty, reputation: 20, period: 'afternoon' });
@@ -287,6 +332,12 @@ export function targets({ days = 40, librarySize = 30, seeds = 100 } = {}) {
     { meta: 'P ≈ 0,5: lucro de ~R$ 150 por dia', alvo: 'R$ 120–180', valor: brl(medium.profit10), ok: medium.profit10 >= 120 && medium.profit10 <= 180 },
     { meta: 'P ≈ 0,8: lucro de ~R$ 350 por dia', alvo: 'R$ 280–420', valor: brl(good.profit10), ok: good.profit10 >= 280 && good.profit10 <= 420 },
     { meta: 'Expert P ≈ 0,8 lucra mais que Médio P ≈ 0,8', alvo: '×1,2–1,6', valor: `×${expertRatio.toFixed(2)} (${brl(expert.profit10)})`, ok: expertRatio >= 1.2 && expertRatio <= 1.6 },
+    {
+      meta: 'gestão ajuda, mas não domina',
+      alvo: '×1,05–1,3',
+      valor: `×${manageRatio.toFixed(2)} (${brl(money10(managed))} em 10 dias)`,
+      ok: manageRatio >= 1.05 && manageRatio <= 1.3,
+    },
     { meta: 'Fácil perfeito ≈ Expert P 0,7 no movimento', alvo: '±10%', valor: `${easy} × ${exp70} visitantes`, ok: Math.abs(easy / exp70 - 1) <= 0.1 },
     { meta: 'palco possível no dia 6 a 8 (guardando dinheiro)', alvo: 'dia 6–8', valor: fmtDay(good.stageDay), ok: !!good.stageDay && good.stageDay.day >= 6 && good.stageDay.day <= 8.5 },
     { meta: 'reputação 50 depois de ~25 dias tocando bem', alvo: 'dia 20–30', valor: fmtDay(good.rep50), ok: !!good.rep50 && good.rep50.day >= 20 && good.rep50.day <= 30 },
@@ -314,7 +365,10 @@ function main() {
   };
   if (values.metas) {
     console.log('Metas de ritmo (lucro: média dos 10 primeiros dias, sem comprar melhorias)\n');
-    for (const t of targets(opts)) console.log(`${check(t.ok)} ${t.meta.padEnd(46)} alvo ${t.alvo.padEnd(12)} → ${t.valor}`);
+    const results = targets(opts);
+    for (const t of results) console.log(`${check(t.ok)} ${t.meta.padEnd(46)} alvo ${t.alvo.padEnd(12)} → ${t.valor}`);
+    // meta fora do alvo falha o comando (o CI usa isto para pegar um balanceamento quebrado)
+    if (results.some((t) => !t.ok)) process.exitCode = 1;
     return;
   }
   const names = values.perfil === 'todos' ? Object.keys(PROFILES) : [values.perfil];

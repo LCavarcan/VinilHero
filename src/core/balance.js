@@ -98,7 +98,58 @@ export const BALANCE = deepFreeze({
 
   rent: { base: 120, perUpgrade: 15 },
   // reposição automática: completa até autoRestockCopies cópias de cada disco vendido no dia
-  stock: { initial: 3, copyPrice: 15, autoRestockCopies: 3 },
+  // lote do fornecedor: 10 cópias por R$ 110 (R$ 11 cada, em vez de 15), mas chega em 2 dias
+  stock: { initial: 3, copyPrice: 15, autoRestockCopies: 3, lot: { copies: 10, price: 110, days: 2 } },
+
+  // ---------- Gestão da loja (docs/design/gestao.md) ----------
+  // disco em destaque no balcão: quem não comprou nada (curioso, fã da seção dele) pode levar por
+  // impulso; tocar o disco em destaque atrai um pouco mais de gente. Troca uma vez por dia.
+  featured: { impulseChance: 0.1, impulseArchetypes: ['curious', 'sectionFan'], playedBonus: 0.1 },
+  // promoção: desconto por alguns dias num disco ou numa seção. Preço × (1 − d); chance de compra
+  // × (1 + elasticidade·d); numa seção, fãs dela × 1,5 e movimento × (1 + 0,5·d) tocando um disco dela.
+  // Custa o cartaz. Vende mais, mas com margem menor e gastando estoque (D-23).
+  promotions: {
+    discounts: [0.1, 0.2, 0.3],
+    days: 3,
+    posterCost: 20,
+    elasticity: 1.5,
+    sectionFanWeight: 1.5,
+    sectionVisitors: 0.5,
+    max: 2,
+  },
+  // eventos da loja: a jogadora marca para um período do dia, paga na hora e colhe (ou não) o
+  // resultado. `cooldown`: dias até poder repetir. Dar errado custa reputação (`flop`).
+  storeEvents: {
+    themeNight: { cost: 80, period: 'night', E: 1.25, fanWeight: 3, minP: 0.6, reputation: 0.75, flop: -0.5, cooldown: 3 },
+    listening: { cost: 50, needs: 'booth', E: 0.9, purchaseFactor: 1.35, curiousWeight: 1.3, reputation: 0.25, cooldown: 2 },
+    launch: { cost: 100, E: 1.4, minStock: 3, minP: 0.6, reputation: 0.5, flop: -0.5, cooldown: 4 },
+    collectors: {
+      cost: 120,
+      period: 'morning',
+      minReputation: 20,
+      collectorWeight: 4,
+      soloFactor: 2,
+      minStars: 4,
+      reputation: 0.75,
+      flop: -0.5,
+      cooldown: 7,
+    },
+    // Festival do bairro (fim de jogo): o dia inteiro, com mezanino e palco
+    festival: {
+      cost: 1500,
+      period: 'all',
+      needs: 'mezzanine',
+      needsAlso: 'stage',
+      minReputation: 60,
+      E: 1.5,
+      minP: 0.6,
+      reputation: 0.5,
+      flop: -0.5,
+      cooldown: 7,
+    },
+    // os efeitos novos de visitantes (evento da loja × promoção × destaque) não passam disso juntos
+    maxCombinedE: 1.6,
+  },
 
   // ---------- Pedidos do dia (docs/design/index.md#pedidos-do-dia) ----------
   requests: {
@@ -133,6 +184,9 @@ export const BALANCE = deepFreeze({
     booth: { price: 900, karaokeFactor: 1.5 },
     stage: { price: 1500, minReputation: 25 },
     cafe: { price: 2000, minReputation: 40, secondRecordChance: 0.15 },
+    // expansões (docs/design/progressao.md#expansoes): mudam o que acontece na loja, não só um número
+    collectorsRoom: { price: 3500, minReputation: 35, collectorWeight: 1.5, collectorPrice: 1.15, soloMaxExtra: 2 },
+    mezzanine: { price: 6000, minReputation: 50, extraShelves: 1 },
   },
 
   mastered: {

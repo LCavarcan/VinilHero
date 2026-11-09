@@ -7,7 +7,7 @@ import { GameError } from './shelves.js';
 const U = BALANCE.upgrades;
 
 /** Todas as melhorias, na ordem da tela. */
-export const UPGRADES = ['sound', 'window', 'extraShelf', 'booth', 'neon', 'stage', 'cafe'];
+export const UPGRADES = ['sound', 'window', 'extraShelf', 'booth', 'neon', 'stage', 'cafe', 'collectorsRoom', 'mezzanine'];
 
 /** Quantas compras de melhoria a loja já fez (cada nível e cada prateleira conta uma). */
 export function upgradeCount(state) {
@@ -38,7 +38,9 @@ export function upgradeInfo(state, id) {
     case 'neon':
     case 'booth':
     case 'stage':
-    case 'cafe': {
+    case 'cafe':
+    case 'collectorsRoom':
+    case 'mezzanine': {
       const level = state.upgrades[id] ?? 0;
       return { id, level, maxLevel: 1, price: level ? null : U[id].price, minReputation: U[id].minReputation ?? 0 };
     }

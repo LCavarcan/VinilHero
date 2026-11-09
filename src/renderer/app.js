@@ -6,9 +6,12 @@ import * as acerto from './screens/acerto.js';
 import * as aguardando from './screens/aguardando.js';
 import * as aovivo from './screens/aovivo.js';
 import * as caderno from './screens/caderno.js';
+import * as colecao from './screens/colecao.js';
+import * as decorar from './screens/decorar.js';
 import * as vizinhanca from './screens/vizinhanca.js';
 import * as escolha from './screens/escolha.js';
 import * as estoque from './screens/estoque.js';
+import * as gestao from './screens/gestao.js';
 import * as melhorias from './screens/melhorias.js';
 import * as minhaloja from './screens/minhaloja.js';
 import * as resultado from './screens/resultado.js';
@@ -32,7 +35,7 @@ let liveFor = null;
 let account = null;
 const liveNow = () => (live && state?.pending && liveFor === state.pending.since ? live : null);
 // telas que a jogadora abriu por cima do fluxo do dia
-let overlay = null; // 'upgrades' | 'stock' | 'stats' | 'regulars' | 'neighborhood' | null
+let overlay = null; // 'upgrades' | 'stock' | 'manage' | 'stats' | 'regulars' | 'neighborhood' | null
 // resultados esperando para serem mostrados, um de cada vez
 const results = [];
 let showingResult = null;
@@ -96,6 +99,10 @@ const ui = {
     overlay = null;
     route();
   },
+  /** Redesenha a tela atual (um formulário mudou). */
+  refresh() {
+    route();
+  },
   /** A animação do resultado acabou: o topo mostra a loja de agora. */
   resultFinished() {
     hudOverride = null;
@@ -112,7 +119,8 @@ const ui = {
 function setState(next) {
   state = next;
   if (!state) return route();
-  for (const n of state.notices) toast(noticeText(n), n.code === 'saveBroken' ? 'error' : 'info', 9000);
+  const ERROR_NOTICES = ['saveBroken', 'saveRecovered', 'saveFailed', 'backupFailed'];
+  for (const n of state.notices) toast(noticeText(n), ERROR_NOTICES.includes(n.code) ? 'error' : 'info', 12000);
   if (state.unseen.length) {
     results.push(...state.unseen);
     // avisa o processo principal: os resultados já estão com a janela
@@ -171,6 +179,9 @@ const SCREENS = {
   close: acerto,
   upgrades: melhorias,
   stock: estoque,
+  manage: gestao,
+  decor: decorar,
+  collection: colecao,
   stats: minhaloja,
   regulars: caderno,
   neighborhood: vizinhanca,
@@ -179,8 +190,10 @@ const SCREENS = {
 const NAV = [
   ['nav-shop', null],
   ['nav-stock', 'stock'],
+  ['nav-manage', 'manage'],
   ['nav-upgrades', 'upgrades'],
   ['nav-stats', 'stats'],
+  ['nav-collection', 'collection'],
   ['nav-regulars', 'regulars'],
   ['nav-neighborhood', 'neighborhood'],
 ];

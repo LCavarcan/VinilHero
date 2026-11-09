@@ -53,12 +53,20 @@ function background(ctx) {
   }
 }
 
+// a rua vista pelo vidro, por período: manhã clara e dourada, tarde azul, noite escura com poste
+const OUTSIDE = {
+  morning: { glass: '#c9b47a', shine: '#fff0c2', street: '#3a3326' },
+  afternoon: { glass: C.glass, shine: C.glassShine, street: C.street },
+  night: { glass: '#1d2747', shine: '#46578a', street: '#0b0a14' },
+};
+let outside = OUTSIDE.afternoon;
+
 function door(ctx, rain, t) {
   const x = DOOR_X - 12;
   rect(ctx, C.frame, x - 2, 44, 28, SCENE.floor - 44);
-  rect(ctx, C.street, x, 46, 24, SCENE.floor - 46);
-  rect(ctx, C.glass, x + 3, 50, 18, 22);
-  rect(ctx, C.glassShine, x + 4, 51, 2, 8);
+  rect(ctx, outside.street, x, 46, 24, SCENE.floor - 46);
+  rect(ctx, outside.glass, x + 3, 50, 18, 22);
+  rect(ctx, outside.shine, x + 4, 51, 2, 8);
   if (rain) {
     // gotas escorrendo no vidro da porta
     for (let i = 0; i < 6; i++) {
@@ -76,8 +84,8 @@ function shopWindow(ctx, level, mastered, rain, t) {
   const x = 40;
   const w = level >= 2 ? 46 : 38;
   rect(ctx, C.frame, x - 2, 40, w + 4, 42);
-  rect(ctx, C.glass, x, 42, w, 38);
-  rect(ctx, C.glassShine, x + 2, 44, 2, 12);
+  rect(ctx, outside.glass, x, 42, w, 38);
+  rect(ctx, outside.shine, x + 2, 44, 2, 12);
   rect(ctx, C.woodDark, x, 72, w, 8);
   // discos expostos
   // discos expostos; os dominados (até um por lugar) aparecem dourados
@@ -241,25 +249,229 @@ function trophyOnCounter(ctx) {
   rect(ctx, '#fff6c2', x + 1, 59, 1, 1);
 }
 
+// ---------- decoração (docs/design/loja-viva.md) ----------
+
+// pôsteres 10 × 14: fundo e um desenho simples por estilo
+const POSTERS = {
+  posterRock: { bg: '#17151f', fg: '#e74c3c', art: ['....1.', '...11.', '..11..', '.1111.', '..11..', '.11...', '.1....'] },
+  posterBrasil: { bg: '#1e8449', fg: '#f1c40f', art: ['..11..', '.1111.', '111111', '.1111.', '..11..', '......', '......'] },
+  posterEletronica: { bg: '#2c1a4a', fg: '#4fd1ff', art: ['......', '1....1', '11..11', '1.11.1', '1....1', '......', '......'] },
+  posterSoul: { bg: '#e67e22', fg: '#17151f', art: ['.1111.', '111111', '11..11', '11..11', '111111', '.1111.', '......'] },
+};
+const POSTER_AT = { wallLeft: [58, 10], wallRight: [240, 6] };
+
+function poster(ctx, id, slot) {
+  const p = POSTERS[id];
+  const at = POSTER_AT[slot];
+  if (!p || !at) return;
+  const [x, y] = at;
+  rect(ctx, '#0b0912', x - 1, y - 1, 12, 16);
+  rect(ctx, p.bg, x, y, 10, 14);
+  p.art.forEach((row, ry) => [...row].forEach((c, rx) => c === '1' && rect(ctx, p.fg, x + 2 + rx, y + 3 + ry, 1, 1)));
+  rect(ctx, C.metal, x + 4, y - 2, 2, 1);
+}
+
+function plant(ctx, t) {
+  const x = 36;
+  const sway = Math.sin(t * 1.3) > 0.7 ? 1 : 0;
+  rect(ctx, '#a0522d', x, SCENE.floor - 6, 7, 6);
+  rect(ctx, '#7f3f1f', x, SCENE.floor - 6, 7, 1);
+  rect(ctx, '#27ae60', x + 3, SCENE.floor - 15, 1, 9);
+  rect(ctx, '#2ecc71', x + sway, SCENE.floor - 14, 3, 2);
+  rect(ctx, '#2ecc71', x + 4 + sway, SCENE.floor - 12, 3, 2);
+  rect(ctx, '#27ae60', x + 1 + sway, SCENE.floor - 10, 2, 2);
+  rect(ctx, '#2ecc71', x + 2, SCENE.floor - 17, 3, 2);
+}
+
+function rug(ctx) {
+  rect(ctx, '#8e3b46', 58, SCENE.floor + 3, 54, 5);
+  rect(ctx, '#c0596a', 60, SCENE.floor + 4, 50, 1);
+  rect(ctx, '#c0596a', 60, SCENE.floor + 6, 50, 1);
+}
+
+function stringLights(ctx, t) {
+  const colors = ['#ff4fa3', '#f1c40f', '#4fd1ff', '#2ecc71'];
+  for (let x = 6; x < SCENE.width - 6; x += 2) rect(ctx, '#3d3654', x, 3 + Math.round(Math.sin(x / 26) * 2), 2, 1);
+  for (let i = 0; i < 24; i++) {
+    const x = 10 + i * 13;
+    const on = (Math.floor(t * 2) + i) % 3 !== 0;
+    rect(ctx, on ? colors[i % colors.length] : '#3d3654', x, 4 + Math.round(Math.sin(x / 26) * 2), 2, 2);
+  }
+}
+
+function armchair(ctx) {
+  const x = 64;
+  rect(ctx, '#6c3483', x, SCENE.floor - 14, 4, 14);
+  rect(ctx, '#8e44ad', x + 3, SCENE.floor - 8, 14, 5);
+  rect(ctx, '#6c3483', x + 14, SCENE.floor - 10, 4, 7);
+  rect(ctx, '#4a235a', x + 4, SCENE.floor - 3, 2, 3);
+  rect(ctx, '#4a235a', x + 14, SCENE.floor - 3, 2, 3);
+}
+
+function jukebox(ctx, t) {
+  const x = 226;
+  rect(ctx, '#7b241c', x, SCENE.floor - 22, 11, 22);
+  rect(ctx, '#f39c12', x + 1, SCENE.floor - 21, 9, 6);
+  const k = Math.floor(t * 3) % 3;
+  for (let i = 0; i < 3; i++) rect(ctx, i === k ? '#ffe08a' : '#b9770e', x + 2 + i * 3, SCENE.floor - 12, 2, 2);
+  rect(ctx, '#1c1828', x + 2, SCENE.floor - 7, 7, 3);
+}
+
+/** Disco em destaque: a capa em pé na frente do balcão, com moldura dourada. */
+function featuredStand(ctx, color) {
+  const x = COUNTER_X - 4;
+  rect(ctx, C.gold, x - 1, 73, 11, 11);
+  rect(ctx, color, x, 74, 9, 9);
+  ctx.fillStyle = C.vinyl;
+  ctx.beginPath();
+  ctx.arc(x + 9, 78.5, 3.5, -Math.PI / 2, Math.PI / 2);
+  ctx.fill();
+}
+
+/** Cartaz de promoção: etiqueta vermelha com "%". */
+function promoTag(ctx) {
+  const x = 42;
+  const y = 30;
+  rect(ctx, '#c0392b', x, y, 9, 7);
+  rect(ctx, '#ffffff', x + 2, y + 2, 1, 1);
+  rect(ctx, '#ffffff', x + 6, y + 4, 1, 1);
+  rect(ctx, '#ffffff', x + 5, y + 1, 1, 1);
+  rect(ctx, '#ffffff', x + 4, y + 3, 1, 1);
+  rect(ctx, '#ffffff', x + 3, y + 5, 1, 1);
+}
+
+/** Enfeite do evento da loja do período. */
+function storeEventDeco(ctx, id, t) {
+  if (id === 'themeNight') {
+    // refletores coloridos varrendo o chão
+    const k = (Math.sin(t * 1.5) + 1) / 2;
+    ctx.fillStyle = '#ff4fa322';
+    ctx.fillRect(Math.round(110 + k * 90), SCENE.floor - 30, 26, 38);
+    ctx.fillStyle = '#4fd1ff22';
+    ctx.fillRect(Math.round(200 - k * 90), SCENE.floor - 30, 26, 38);
+  } else if (id === 'launch') {
+    // balões no balcão
+    const bob = Math.round(Math.sin(t * 2));
+    rect(ctx, '#e74c3c', COUNTER_X + 32, 40 + bob, 5, 6);
+    rect(ctx, '#f1c40f', COUNTER_X + 37, 43 - bob, 5, 6);
+    rect(ctx, C.metal, COUNTER_X + 34, 46, 1, 12);
+    rect(ctx, C.metal, COUNTER_X + 39, 49, 1, 9);
+  } else if (id === 'collectors') {
+    // placa "colecionadores" na parede
+    rect(ctx, '#5a3a26', 120, 22, 30, 6);
+    rect(ctx, C.gold, 122, 24, 26, 2);
+  } else if (id === 'listening') {
+    // fones a mais e luz baixa na cabine
+    rect(ctx, '#f1c40f33', 88, 36, 20, SCENE.floor - 36);
+  }
+}
+
+/** Sala de colecionadores: a prateleira da direita vira vitrine de raros (vidro e lombadas douradas). */
+function collectorsShowcase(ctx) {
+  const x = 174;
+  rect(ctx, '#b7950b', x, 30, 58, 2);
+  for (let i = 0; i < 16; i++) rect(ctx, i % 3 ? C.gold : '#fff6c2', x + 5 + i * 3, 38, 2, 9);
+  ctx.fillStyle = '#8cc6d933';
+  ctx.fillRect(x + 2, 33, 54, 15);
+  rect(ctx, '#ffffff66', x + 4, 34, 1, 12);
+}
+
+/** Mezanino: piso com guarda-corpo em cima das prateleiras e uma escada de mão. */
+function mezzanine(ctx) {
+  const x0 = 106;
+  const x1 = 238;
+  rect(ctx, C.woodDark, x0, 24, x1 - x0, 4);
+  rect(ctx, C.wood, x0, 24, x1 - x0, 1);
+  rect(ctx, C.metal, x0, 18, x1 - x0, 1);
+  for (let x = x0; x <= x1; x += 8) rect(ctx, C.metal, x, 18, 1, 6);
+  // escada
+  rect(ctx, C.metal, x0 + 1, 28, 1, SCENE.floor - 28);
+  rect(ctx, C.metal, x0 + 5, 28, 1, SCENE.floor - 28);
+  for (let y = 32; y < SCENE.floor; y += 7) rect(ctx, C.metal, x0 + 1, y, 5, 1);
+}
+
+/** Festival do bairro: bandeirinhas atravessando a loja. */
+function bunting(ctx, t) {
+  const colors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#e84393'];
+  const wave = Math.round(Math.sin(t * 2));
+  for (let i = 0; i < 26; i++) {
+    const x = 6 + i * 12;
+    const y = 8 + Math.round(Math.sin(i / 2) * 2);
+    rect(ctx, colors[i % colors.length], x, y + (i % 2 ? wave : 0), 5, 3);
+    rect(ctx, colors[i % colors.length], x + 1, y + 3 + (i % 2 ? wave : 0), 3, 1);
+  }
+}
+
+// cor da luz da loja (dimmer) e quanto escurece por período
+const LIGHT_TINT = { warm: '#ffb34714', neon: '#b84fff22', cool: '#4fb8ff1c', sunset: '#ff6b4f20' };
+const PERIOD_SHADE = { morning: '#fff2d40c', afternoon: null, night: '#05041466' };
+
+function lighting(ctx, color, period) {
+  const { width, height } = SCENE;
+  const shade = PERIOD_SHADE[period];
+  if (shade) {
+    ctx.fillStyle = shade;
+    ctx.fillRect(0, 0, width, height);
+  }
+  ctx.fillStyle = LIGHT_TINT[color] ?? LIGHT_TINT.warm;
+  ctx.fillRect(0, 0, width, height);
+  if (period === 'night') {
+    // as luminárias acendem um cone de luz
+    for (const x of [80, 175, 270]) {
+      ctx.fillStyle = '#ffd36b18';
+      ctx.beginPath();
+      ctx.moveTo(x - 3, 10);
+      ctx.lineTo(x + 4, 10);
+      ctx.lineTo(x + 22, SCENE.floor);
+      ctx.lineTo(x - 21, SCENE.floor);
+      ctx.fill();
+    }
+  }
+}
+
 /**
  * Desenha a loja (sem os clientes). `t` em segundos anima o toca-discos, a caixa de som, o neon e a
  * chuva. `look`: { upgrades, event, mastered (discos dominados), legendary }.
  */
 export function drawShop(ctx, look, t = 0) {
   const { upgrades, event = null, mastered = 0, legendary = false, trophy = false } = look;
+  // loja viva: período, decoração, disco em destaque, promoção, evento da loja (todos opcionais)
+  const { period = 'afternoon', decor = null, featuredColor = null, promo = false, storeEvent = null } = look;
+  const items = new Set(decor?.items ?? []);
   const rain = event === 'rain';
+  outside = OUTSIDE[period] ?? OUTSIDE.afternoon;
   ctx.imageSmoothingEnabled = false;
   background(ctx);
+  if (items.has('lights')) stringLights(ctx, t);
+  for (const [slot, id] of Object.entries(decor?.posters ?? {})) if (id) poster(ctx, id, slot);
   door(ctx, rain, t);
   shopWindow(ctx, upgrades.window ?? 0, mastered, rain, t);
+  if (promo) promoTag(ctx);
+  if (items.has('rug')) rug(ctx);
+  if (items.has('armchair')) armchair(ctx);
   if (upgrades.booth) booth(ctx);
   shelf(ctx, 112, 58, 0);
   shelf(ctx, 174, 58, 4);
+  if (upgrades.collectorsRoom) collectorsShowcase(ctx);
+  if (upgrades.mezzanine) mezzanine(ctx);
+  if (items.has('jukebox')) jukebox(ctx, t);
   if (upgrades.neon) neon(ctx, t);
   if (upgrades.stage) stage(ctx);
   speaker(ctx, upgrades.sound ?? 0, t);
   if (upgrades.cafe) cafe(ctx, t);
   counter(ctx, t);
+  if (featuredColor) featuredStand(ctx, featuredColor);
+  if (items.has('plant')) plant(ctx, t);
   if (trophy) trophyOnCounter(ctx);
+  if (storeEvent === 'festival') bunting(ctx, t);
+  else if (storeEvent) storeEventDeco(ctx, storeEvent, t);
+  lighting(ctx, decor?.lighting ?? 'warm', period);
   if (legendary) legendaryFrame(ctx);
+}
+
+/** Cor de um disco na cena (a capa não cabe em pixel art): sempre a mesma para o mesmo disco. */
+export function recordColor(id) {
+  let h = 0;
+  for (const ch of String(id)) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  return SPINES[h % SPINES.length];
 }

@@ -2,7 +2,6 @@
 // (game.js, que usa as regras do core/) e o save.
 
 import { app, BrowserWindow, dialog, ipcMain, net, protocol, session } from 'electron';
-import { spawn } from 'node:child_process';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -11,6 +10,7 @@ import { findFretshiftDir, findFretshiftExe, isFretshiftDir, openSongArgs } from
 import { DEFAULT_PORT, startLiveServer } from '../bridge/liveServer.js';
 import { api as serverApi, isSignedIn, signIn, signOut } from './account.js';
 import { createGame } from './game.js';
+import { spawnDetached } from './launch.js';
 import { createSocial } from './social.js';
 import { createStore } from './store.js';
 import { startUpdater } from './updater.js';
@@ -83,13 +83,28 @@ function handleParties(parties) {
   if (results.length) pushState();
 }
 
+// leituras seguidas que falharam (JSON incompleto, arquivo em uso, pasta sumiu)
+let pollFailures = 0;
+const POLL_FAILURES_SHOWN = 3;
+
 async function pollWhileWaiting() {
   if (!game?.waitingForPlay || !fretshift.dir) return;
   try {
     handlePlays(await readPlays(fretshift.dir));
     handleParties(await readParties(fretshift.dir));
-  } catch {
-    // JSON incompleto ou arquivo em uso: a próxima rodada tenta de novo
+    if (pollFailures >= POLL_FAILURES_SHOWN) {
+      fretshift.error = null;
+      pushStatus();
+    }
+    pollFailures = 0;
+  } catch (err) {
+    // uma falha é normal (o Fretshift está gravando agora): a próxima rodada tenta de novo. Várias
+    // seguidas vão para o indicador do Fretshift, em vez de ficarem escondidas
+    pollFailures += 1;
+    if (pollFailures === POLL_FAILURES_SHOWN) {
+      fretshift.error = `Não deu para ler as partidas do Fretshift (${err.code ?? err.message}). Tentando de novo a cada 5 s.`;
+      pushStatus();
+    }
   }
 }
 
@@ -274,6 +289,17 @@ gameAction('record:move', ({ songId, section }) => game.moveRecord({ songId, sec
 gameAction('stock:restock', ({ songId, copies }) => game.restock({ songId, copies }));
 gameAction('stock:auto', ({ auto }) => game.setAutoRestock({ auto }));
 gameAction('stock:top-up', () => game.topUp());
+gameAction('stock:lot', ({ songId }) => game.buyLot({ songId }));
+// gestão (docs/design/gestao.md): só passa adiante os campos esperados
+gameAction('manage:feature', ({ songId }) => game.setFeatured({ songId: typeof songId === 'string' ? songId : null }));
+gameAction('manage:promo', ({ kind, songId, section, discount }) => game.startPromotion({ kind, songId, section, discount: Number(discount) }));
+gameAction('manage:end-promo', ({ id }) => game.endPromotion({ id }));
+gameAction('manage:event', ({ id, period, section, songId }) => game.scheduleEvent({ id, period, section, songId }));
+gameAction('manage:cancel-event', () => game.cancelEvent());
+gameAction('decor:buy', ({ id }) => game.buyDecor({ id }));
+gameAction('decor:poster', ({ slot, id }) => game.placePoster({ slot, id: typeof id === 'string' ? id : null }));
+gameAction('decor:toggle', ({ id }) => game.toggleDecor({ id }));
+gameAction('decor:lighting', ({ lighting }) => game.setLighting({ lighting }));
 // "Tocar no Fretshift": abre o Fretshift direto na música (ele aceita --open-song desde a 0.2.0)
 ipcMain.handle('fretshift:launch', (_e, { songId } = {}) => launchFretshift(songId));
 ipcMain.handle('fretshift:pick-exe', async () => {
@@ -287,19 +313,16 @@ ipcMain.handle('fretshift:pick-exe', async () => {
   return { ok: true, status: status() };
 });
 
+/**
+ * Abre o Fretshift. Espera o sistema confirmar que o processo nasceu ('spawn') ou falhou ('error'):
+ * antes, um executável apagado ou sem permissão dava "ok" e a jogadora ficava esperando à toa.
+ */
 function launchFretshift(songId, { importing = false } = {}) {
   const exe = findFretshiftExe(settings.get());
   if (!exe) return { ok: false, error: 'noExe' };
   const args = openSongArgs(songId, { importing });
   if (!args) return { ok: false, error: 'badSong' };
-  try {
-    const child = spawn(exe, args, { detached: true, stdio: 'ignore' });
-    child.on('error', () => {});
-    child.unref();
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: 'launchFailed', message: err.message };
-  }
+  return spawnDetached(exe, args);
 }
 
 ipcMain.handle('fretshift:pick-dir', async () => {

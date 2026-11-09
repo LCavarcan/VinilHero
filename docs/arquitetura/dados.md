@@ -7,11 +7,38 @@
 ```text
 VinilHero/
 ├── save.json             ← a loja (único arquivo que importa; dá para copiar como backup)
+├── save.json.bak         ← a gravação anterior do save (refeita a cada gravação)
+├── backups/
+│   └── save-dia-<N>.json ← um por dia fechado; ficam os últimos 7
+├── save.broken-<data>.json ← save que não abriu (nunca é apagado pelo jogo)
 ├── records-cache.json    ← resumo dos discos (pode ser apagado: é refeito)
 └── settings.json         ← configurações
 ```
 
 Todos gravados com escrita atômica (`.tmp` + renomear), com o mesmo `store.js` do Fretshift.
+
+## Backups e recuperação
+
+`src/main/saveFile.js` protege a loja assim ([D-22](../decisoes/index.md#d-22-saves-com-backup-e-recuperacao)):
+
+1. **Gravação:** o save vai para `save.json.tmp` com `fsync` (o conteúdo chega ao disco), o save atual
+   é copiado para `save.json.bak` e o `.tmp` é renomeado para `save.json`. Uma queda de energia no
+   meio deixa sempre um arquivo inteiro para trás.
+2. **Backup diário:** ao fechar o dia, uma cópia vai para `backups/save-dia-<N>.json`. Ficam os 7 mais
+   novos.
+3. **Leitura:** o save é lido, migrado (`migrate`) e validado (`validate`). Se não abrir, ele é
+   guardado como `save.broken-<data>.json` e o jogo tenta, nessa ordem: o `.tmp` (gravação
+   interrompida depois de guardar o `.bak`), o `.bak` e os backups diários do mais novo para o mais
+   velho. O primeiro que abrir vira o `save.json` de novo, e a janela avisa de onde a loja voltou.
+   Só sem nenhum backup que preste a loja recomeça do zero (o arquivo estragado fica guardado).
+4. **Versão mais nova:** um save gravado por uma versão mais nova do VinilHero (depois de voltar para
+   uma versão antiga) não é tocado nem tratado como estragado: a loja não abre e o indicador do
+   Fretshift explica que é preciso atualizar o jogo.
+5. **Falha ao gravar** (disco cheio, pasta sem permissão): o jogo continua com a loja na memória, avisa
+   uma vez e tenta gravar de novo a cada ação; quando volta a dar certo, avisa de novo.
+
+`validate` confere a forma do save: campos obrigatórios, estoque numérico e não negativo em cada
+disco, estatísticas numéricas, clientes fixos como objetos. Campos desconhecidos são mantidos.
 
 ## `save.json`
 
@@ -79,7 +106,20 @@ Todos gravados com escrita atômica (`.tmp` + renomear), com o mesmo `store.js` 
 | `historyImported` | o histórico anterior já foi importado (só acontece na primeira abertura) |
 | `records` | só o que é do VinilHero (seção, estoque, histórico). Título, artista, bpm vêm do `records-cache.json` |
 | `processedPlays` | ids do `scores.json`; cresce devagar (uma partida por música tocada) |
-| `history` | um item por dia fechado, para o gráfico de evolução |
+| `history` | um item por dia fechado, para o gráfico de evolução (com `storeEvent` e `spent` só nos dias que tiveram) |
+| `featured` | versão 4: `{ songId, day }` do disco em destaque (troca uma vez por dia) ou `null` ([Gestão](../design/gestao.md)) |
+| `promotions` | versão 4: promoções ativas `{ id, kind: 'record' \| 'section', songId \| section, discount, startDay, untilDay }` |
+| `storeEvents.lastDay` | versão 4: o último dia de cada evento da loja (prazo para repetir) |
+| `day.storeEvent` | versão 4: o evento marcado hoje `{ id, period, cost, section?, songId?, done, outcome, outcomes? }` |
+| `day.spent` | versão 4: gastos do dia fora do acerto (`restock`, `lots`, `promotions`, `events`); o lucro do dia desconta |
+| `restock.lots` | versão 4: lotes do fornecedor a caminho `{ songId, copies, arrivesDay, cost }` |
+| `stories` / `talksSeen` / `day.talks` | versão 4: [histórias da vizinhança](../design/historias.md) e conversas |
+| `decor` | versão 4: `{ owned, posters: { wallLeft, wallRight }, hidden, lighting }` ([Loja viva](../design/loja-viva.md)) |
+| `achievements` / `milestones` | versão 4: o dia em que cada conquista e cada marco do caminho saiu |
+| `upgrades.collectorsRoom` / `upgrades.mezzanine` | versão 4: as expansões |
+
+**Versão 4** (esta versão): tudo acima começa vazio; a loja continua exatamente como estava. Antes de
+gravar a versão migrada pela primeira vez, o arquivo original fica guardado como `save.pre-v4.json`.
 
 Disco que sumiu da biblioteca do Fretshift (apagado lá) **continua** no `records` mas não aparece na
 prateleira. Se voltar, volta com o histórico.

@@ -4,6 +4,7 @@
 import { BALANCE } from './balance.js';
 import { customerMix, drawVisitors } from './customers.js';
 import { eventFactor, isKaraokeNight } from './events.js';
+import { manageEffects, storeEventOutcome } from './manage.js';
 import { PASSIVE_P, performanceOf, performanceOfBand } from './performance.js';
 import { hasPerk, resolveVisits } from './regulars.js';
 import { fulfilled, gaveUp, isOpenRequest, missReason } from './requests.js';
@@ -125,7 +126,9 @@ export function resolvePresentation({
   const eventE = eventFactor(event, period, record);
   const weekly = !passive && !!social?.weekly;
   const reference = !passive && social?.reference ? social.reference : null;
-  const E = eventE * bandE * (weekly ? BALANCE.weekly.E : 1);
+  // gestão (destaque, promoções, evento da loja): sem nada marcado, tudo vale 1
+  const manage = manageEffects(state, { record, period, passive });
+  const E = eventE * bandE * (weekly ? BALANCE.weekly.E : 1) * manage.E;
   const count = visitorCount({
     P,
     difficulty: show && !passive ? difficulties : difficulty,
@@ -136,7 +139,7 @@ export function resolvePresentation({
     event: E * (reference ? 1 + BALANCE.rivals.referenceBonus : 1),
     baseBonus: upgrades.neon ? BALANCE.upgrades.neon.baseBonus : 0,
   });
-  const mix = customerMix({
+  const baseMix = customerMix({
     difficulty: show && !passive ? difficulties : difficulty,
     period,
     reputation,
@@ -144,8 +147,15 @@ export function resolvePresentation({
     booth: (upgrades.booth ?? 0) > 0,
     karaokeNight,
   });
-  // a Rita "da casa": o pôster dela atrai mais fãs de Rock e Metal
-  const sectionWeights = hasPerk(state, 'rita') ? { [PERKS.rita.section]: PERKS.rita.fanWeight } : null;
+  const mix = { ...baseMix };
+  // sala de colecionadores: eles vêm mais (e pagam mais, em priceFor)
+  const room = (upgrades.collectorsRoom ?? 0) > 0;
+  if (room && mix.collector !== undefined) mix.collector *= BALANCE.upgrades.collectorsRoom.collectorWeight;
+  for (const [id, f] of Object.entries(manage.mixFactors)) if (mix[id] !== undefined) mix[id] *= f;
+  // a Rita "da casa": o pôster dela atrai mais fãs de Rock e Metal; promoções e a noite temática, os da seção
+  const sectionFactors = { ...manage.sectionFactors };
+  if (hasPerk(state, 'rita')) sectionFactors[PERKS.rita.section] = (sectionFactors[PERKS.rita.section] ?? 1) * PERKS.rita.fanWeight;
+  const sectionWeights = Object.keys(sectionFactors).length ? sectionFactors : null;
   const drawn = drawVisitors(rng, count, mix, sections, sectionWeights);
   // a Nina "da casa": o cartaz dela na vitrine traz mais um curioso
   if (hasPerk(state, 'nina')) for (let i = 0; i < PERKS.nina.extraCurious; i++) drawn.push({ archetype: 'curious' });
@@ -175,7 +185,9 @@ export function resolvePresentation({
     const [min, max] = BALANCE.prices[archetype];
     let price = between(rng, min, max);
     if (archetype === 'collector' && bought.mastered) price *= BALANCE.collectorMasteredFactor;
-    return Math.round(price);
+    if (archetype === 'collector' && room) price *= BALANCE.upgrades.collectorsRoom.collectorPrice;
+    // promoção: o preço cai, a margem também (a cópia custa o mesmo para repor)
+    return Math.round(price * manage.priceFactor(bought));
   };
 
   const windowFactor = BALANCE.upgrades.window.purchaseFactor[upgrades.window ?? 0] ?? 1;
@@ -192,6 +204,7 @@ export function resolvePresentation({
       (BUY.performanceMin + BUY.performanceSlope * P) *
       windowFactor *
       cidaFactor *
+      manage.purchaseFactor *
       (1 + liveBonus);
     if (!(rng() < chance)) return { ...v, bought: null, price: 0 };
     const bought = chooseRecord();
@@ -211,14 +224,29 @@ export function resolvePresentation({
     return out;
   });
 
+  // disco em destaque no balcão: quem não levou nada pode levar ele por impulso (só se tiver cópia)
+  const featured = manage.featured ? shelfRecords.find((r) => r.id === manage.featured) : null;
+  let impulse = 0;
+  if (featured) {
+    for (let i = 0; i < visitors.length; i++) {
+      const v = visitors[i];
+      if (v.bought || v.noStock || !manage.impulseArchetypes.includes(v.archetype)) continue;
+      if (v.archetype === 'sectionFan' && v.section !== featured.section) continue;
+      if (!(rng() < manage.impulseChance) || !(stock.get(featured.id) > 0)) continue;
+      take(featured.id);
+      visitors[i] = { ...v, bought: featured.id, price: priceFor(v.archetype, featured), impulse: true };
+      impulse++;
+    }
+  }
+
   // discos dominados vendem sozinhos (um colecionador de passagem), no máximo 4 por período
   const M = BALANCE.mastered;
   const soloSales = [];
   for (const r of shelfRecords) {
-    if (soloSales.length >= M.soloSaleMaxPerPeriod) break;
+    if (soloSales.length >= M.soloSaleMaxPerPeriod + (room ? BALANCE.upgrades.collectorsRoom.soloMaxExtra : 0)) break;
     if (!r.mastered) continue;
     // o Seu Afonso "da casa": a coleção dele atrai mais colecionadores de passagem
-    const soloChance = hasPerk(state, 'afonso') ? PERKS.afonso.soloSaleChance : M.soloSaleChance;
+    const soloChance = (hasPerk(state, 'afonso') ? PERKS.afonso.soloSaleChance : M.soloSaleChance) * manage.soloFactor;
     if (rng() < soloChance && stock.get(r.id) > 0) {
       take(r.id);
       soloSales.push({ songId: r.id, price: M.soloSalePrice });
@@ -237,7 +265,12 @@ export function resolvePresentation({
     .map((r) => ({ id: r.id, ...missReason(r, presentation) }));
   // clientes fixos deste período: atendido, ele deixa a gorjeta (não compra: a recompensa dele é a
   // amizade, não o dinheiro; ver D-21)
-  const regulars = resolveVisits(state, { period, record, each, show, passive });
+  // reações: o evento marcado para este período e a promoção no disco tocado
+  const context = {
+    ...(manage.storeEvent ? { storeEvent: manage.storeEvent.id } : {}),
+    ...(manage.discount ? { promo: true } : {}),
+  };
+  const regulars = resolveVisits(state, { period, record, each, show, passive, context });
   const tips = done.reduce((sum, r) => sum + r.tip, 0) + regulars.reduce((sum, o) => sum + o.tip, 0);
   const requestBonus = done.reduce((sum, r) => sum + r.reputation, 0) + regulars.reduce((sum, o) => sum + o.reputation, 0);
 
@@ -246,8 +279,14 @@ export function resolvePresentation({
   const sales = Object.values(stockUsed).reduce((a, b) => a + b, 0);
   const critic = visitors.some((v) => v.archetype === 'critic');
   const fullCombo = !passive && plays.every((p) => !!p.fullCombo);
+  // evento da loja: deu certo soma como um pedido (com a redução perto do topo); deu errado tira
+  const storeEvent = storeEventOutcome(manage.storeEvent, { record, passive, P, play: passive ? null : play, difficulties });
+  const eventGain = Math.max(0, storeEvent?.reputation ?? 0);
+  const eventLoss = Math.min(0, storeEvent?.reputation ?? 0);
+  // "só pôr pra tocar" não muda a reputação (D-07), a não ser que estrague um evento marcado
   const delta =
-    reputationDelta({ P, mode: passive ? 'passive' : 'play', critic, fullCombo, requestBonus, reputation }) +
+    reputationDelta({ P, mode: passive ? 'passive' : 'play', critic, fullCombo, requestBonus: requestBonus + eventGain, reputation }) +
+    eventLoss +
     regulars.reduce((sum, o) => sum + o.bonusReputation, 0);
 
   return {
@@ -282,6 +321,10 @@ export function resolvePresentation({
     requestsFailed: failed.map((r) => r.id),
     requestsMissed: missed,
     regulars,
+    storeEvent,
+    featured: manage.featured,
+    impulse,
+    discount: manage.discount,
     reasons: reasonsFor({
       visitors,
       passive,
@@ -304,6 +347,9 @@ export function resolvePresentation({
       band: show && !passive ? bandPerf : null,
       reference,
       weekly,
+      storeEvent,
+      impulse,
+      discount: manage.discount,
     }),
     live,
   };
@@ -355,6 +401,9 @@ function reasonsFor(r) {
   const seconds = visitors.filter((v) => v.extra).length;
   if (seconds) reasons.push({ code: 'cafe', count: seconds });
   if (r.soloSales.length) reasons.push({ code: 'soloSales', count: r.soloSales.length });
+  if (r.storeEvent) reasons.push({ code: `store_${r.storeEvent.id}`, outcome: r.storeEvent.outcome });
+  if (r.impulse) reasons.push({ code: 'impulse', count: r.impulse });
+  if (r.discount) reasons.push({ code: 'promo', discount: r.discount });
 
   if (!passive && P >= 0.85) reasons.push({ code: 'greatShow' });
   if (!passive && P < 0.3) reasons.push({ code: 'roughShow' });

@@ -1,7 +1,10 @@
 // Fim do dia: antes do acerto (fechar o dia) e depois (o resumo, melhorias, abrir o próximo dia).
 
 import { button, el } from '../dom.js';
-import { EVENTS, PERIOD_NAMES, TITLE_NAMES, formatDelta, formatMoney, formatP, formatReputation, plural } from '../text.js';
+import { ACHIEVEMENTS, EVENTS, MILESTONES, PERIOD_NAMES, TITLE_NAMES, formatDelta, formatMoney, formatP, formatReputation, plural } from '../text.js';
+
+/** Gastos do dia fora do aluguel: reposição à mão, lotes, cartazes, eventos. */
+const spentTotal = (s) => Object.values(s.spent ?? {}).reduce((a, b) => a + b, 0);
 
 const tile = (label, value, className = null) => el('div', null, el('span', 'label', label), el('strong', className, value));
 
@@ -94,6 +97,7 @@ function afterClose(state, ui) {
         s.tips ? tile('Gorjetas', formatMoney(s.tips)) : null,
         tile('Aluguel', `− ${formatMoney(s.rent)}`, 'negative'),
         s.restock?.cost ? tile('Reposição', `− ${formatMoney(s.restock.cost)}`, 'negative') : null,
+        spentTotal(s) ? tile('Gestão e reposição à mão', `− ${formatMoney(spentTotal(s))}`, 'negative') : null,
         tile('Lucro do dia', formatMoney(s.profit), s.profit < 0 ? 'negative' : 'positive'),
         tile('Saldo', formatMoney(s.money), s.money < 0 ? 'negative' : null),
         tile('Reputação', `${formatReputation(s.reputation)} (${formatDelta(s.reputationChange)})`),
@@ -103,6 +107,12 @@ function afterClose(state, ui) {
     if (s.restock?.cost) {
       const copies = Object.values(s.restock.ordered).reduce((a, b) => a + b, 0);
       children.push(el('p', 'muted', `Reposição automática: ${plural(copies, 'cópia chega', 'cópias chegam')} amanhã.`));
+    }
+    for (const id of s.milestones ?? []) {
+      children.push(el('p', 'title-up', `Novo marco no caminho da loja: ${MILESTONES[id]?.name ?? id}!`));
+    }
+    for (const id of s.achievements ?? []) {
+      children.push(el('p', 'title-up', `Conquista: ${ACHIEVEMENTS[id]?.name ?? id}! (veja em Coleção)`));
     }
     if (s.title !== s.previousTitle) {
       children.push(el('p', 'title-up', `A loja agora é: ${TITLE_NAMES[s.title]}!`));

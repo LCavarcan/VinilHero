@@ -32,7 +32,20 @@ contextBridge.exposeInMainWorld('api', {
   },
   shop: { buy: invoke('shop:buy') },
   records: { move: invoke('record:move') },
-  stock: { restock: invoke('stock:restock'), setAuto: invoke('stock:auto'), topUp: invoke('stock:top-up') },
+  stock: { restock: invoke('stock:restock'), setAuto: invoke('stock:auto'), topUp: invoke('stock:top-up'), lot: invoke('stock:lot') },
+  decor: {
+    buy: invoke('decor:buy'),
+    poster: invoke('decor:poster'),
+    toggle: invoke('decor:toggle'),
+    lighting: invoke('decor:lighting'),
+  },
+  manage: {
+    feature: invoke('manage:feature'),
+    promo: invoke('manage:promo'),
+    endPromo: invoke('manage:end-promo'),
+    event: invoke('manage:event'),
+    cancelEvent: invoke('manage:cancel-event'),
+  },
   update: {
     version: invoke('update:version'),
     status: invoke('update:status'),

@@ -5,6 +5,7 @@ import { el } from '../dom.js';
 import { portrait } from '../scene/atores.js';
 import { EVENTS, PERIOD_NAMES, UPGRADES, condText, formatMoney, requestHint, requestText } from '../text.js';
 import { REGULAR_TEXT } from '../textos-clientes.js';
+import { STORY_TEXT, fillStory } from '../textos-historias.js';
 
 /** Pedidos para mostrar: os abertos e os já atendidos hoje. */
 export const boardRequests = (state) => state.day.requests.filter((r) => r.open || r.done);
@@ -38,6 +39,7 @@ export function askText(visit, dayNumber) {
   const text = REGULAR_TEXT[visit.id];
   if (!text) return '';
   if (visit.kind === 'chapter') return text.asks.chapters[visit.chapter - 1] ?? '';
+  if (visit.kind === 'story') return fillStory(STORY_TEXT[visit.story]?.steps[visit.step]?.ask ?? '', visit.songTitle);
   const asks = text.asks.taste;
   return asks[(dayNumber + visit.id.length) % asks.length];
 }
@@ -55,10 +57,11 @@ export function regularsBoard(state, { focus = null, onFocus = null } = {}) {
     if (!text) continue;
     const id = regularFocusId(v);
     const chapter = v.kind === 'chapter';
+    const story = v.kind === 'story';
     const needs = v.blockedBy ? text.needs?.[v.blockedBy] : null;
     const li = el(
       'li',
-      `regular-note${v.done ? ' done' : ''}${chapter ? ' chapter' : ''}${focus === id ? ' focus' : ''}`,
+      `regular-note${v.done ? ' done' : ''}${chapter ? ' chapter' : ''}${story ? ' story' : ''}${focus === id ? ' focus' : ''}`,
       portrait(v.id),
       el(
         'div',
@@ -71,7 +74,7 @@ export function regularsBoard(state, { focus = null, onFocus = null } = {}) {
           'note-reward',
           v.done
             ? 'já passou por aqui hoje'
-            : `${chapter ? `capítulo ${v.chapter} · ` : ''}${formatMoney(v.tip)} de gorjeta${v.open && !v.matches.length ? ' · nenhum disco na prateleira serve' : ''}`,
+            : `${chapter ? `capítulo ${v.chapter} · ` : ''}${story ? `${STORY_TEXT[v.story]?.title ?? 'história'} · ` : ''}${formatMoney(v.tip)} de gorjeta${v.open && !v.matches.length ? ' · nenhum disco na prateleira serve' : ''}`,
         ),
         needs && !v.done ? el('span', 'regular-needs', `“${needs}” (${UPGRADES[v.blockedBy]?.name ?? v.blockedBy})`) : null,
       ),

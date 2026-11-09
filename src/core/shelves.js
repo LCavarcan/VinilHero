@@ -16,7 +16,9 @@ export class GameError extends Error {
 
 /** Quantos discos cabem na seção. */
 export function shelfCapacity(state, section) {
-  const shelves = BALANCE.start.shelvesPerSection + (state.upgrades.extraShelves?.[section] ?? 0);
+  // o mezanino dá uma prateleira a mais em toda seção
+  const mezzanine = (state.upgrades.mezzanine ?? 0) > 0 ? BALANCE.upgrades.mezzanine.extraShelves : 0;
+  const shelves = BALANCE.start.shelvesPerSection + (state.upgrades.extraShelves?.[section] ?? 0) + mezzanine;
   return shelves * BALANCE.shelfSize;
 }
 

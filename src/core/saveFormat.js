@@ -2,9 +2,10 @@
 // Ver docs/arquitetura/dados.md#savejson.
 
 import { BALANCE } from './balance.js';
+import { newDecor } from './decor.js';
 
 export const SAVE_FORMAT = 'vinilhero-save';
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 export const PERIODS = ['morning', 'afternoon', 'night'];
 // depois da noite o dia fica "closing" (falta o acerto) e, depois do acerto, "closed"
 export const DAY_PHASES = [...PERIODS, 'closing', 'closed'];
@@ -28,12 +29,41 @@ export function newDay(number) {
     arrivals: {},
     // clientes fixos que vêm hoje, com o pedido de cada um (docs/design/clientes-fixos.md)
     regulars: [],
+    // evento que a jogadora marcou para um período de hoje (docs/design/gestao.md)
+    storeEvent: null,
+    // conversas que aconteceram na loja hoje (docs/design/historias.md)
+    talks: [],
   };
+}
+
+/**
+ * Registra um gasto do dia (`kind`: restock, lots, promotions, events), para o acerto mostrar o lucro
+ * de verdade. `amount` negativo desfaz (evento desmarcado).
+ */
+export function addSpent(state, kind, amount) {
+  const spent = { ...state.day.spent };
+  spent[kind] = Math.max(0, (spent[kind] ?? 0) + amount);
+  return { ...state, day: { ...state.day, spent } };
 }
 
 /** Melhorias zeradas. */
 export function noUpgrades() {
-  return { sound: 0, neon: 0, window: 0, booth: 0, stage: 0, cafe: 0, extraShelves: {} };
+  return { sound: 0, neon: 0, window: 0, booth: 0, stage: 0, cafe: 0, collectorsRoom: 0, mezzanine: 0, extraShelves: {} };
+}
+
+/** Campos da gestão da loja (versão 4). */
+export function newManagement() {
+  return { featured: null, promotions: [], storeEvents: { lastDay: {} } };
+}
+
+/** Histórias da vizinhança (versão 4): o passo de cada uma e as conversas soltas já ouvidas. */
+export function newNeighborhood() {
+  return { stories: {}, talksSeen: [] };
+}
+
+/** Loja viva (versão 4): a decoração e o dia em que cada conquista saiu. */
+export function newPersonal() {
+  return { decor: newDecor(), achievements: {}, milestones: {} };
 }
 
 /** Loja nova. `seed` é sorteado uma vez por quem chama; `now` é a hora em ISO. */
@@ -48,10 +78,14 @@ export function newSave(seed, now) {
     pending: null,
     upgrades: noUpgrades(),
     // reposição de estoque: cópias encomendadas (chegam na abertura do dia seguinte) e automática
-    restock: { orders: {}, auto: false },
+    restock: { orders: {}, auto: false, lots: [] },
     records: {},
     // clientes fixos: amizade, memória e próxima visita de cada um
     regulars: {},
+    // gestão (versão 4): disco em destaque, promoções e quando cada evento da loja aconteceu
+    ...newManagement(),
+    ...newNeighborhood(),
+    ...newPersonal(),
     processedPlays: [],
     historyImported: false,
     stats: { days: 0, visitors: 0, sales: 0, revenue: 0, fullCombos: 0 },
@@ -66,6 +100,7 @@ export function migrate(save) {
   let s = save;
   if (s.version === 1) s = toVersion2(s);
   if (s.version === 2) s = toVersion3(s);
+  if (s.version === 3) s = toVersion4(s);
   return s;
 }
 
@@ -91,6 +126,23 @@ function toVersion2(save) {
  */
 function toVersion3(save) {
   return { ...save, version: 3, regulars: save.regulars ?? {}, day: { ...save.day, regulars: save.day.regulars ?? [] } };
+}
+
+/**
+ * Versão 4: gestão da loja (disco em destaque, promoções, eventos marcados, lotes do fornecedor).
+ * Tudo começa vazio: a loja continua exatamente como estava.
+ */
+function toVersion4(save) {
+  return {
+    ...newManagement(),
+    ...newNeighborhood(),
+    ...newPersonal(),
+    ...save,
+    version: 4,
+    restock: { lots: [], ...save.restock },
+    upgrades: { ...noUpgrades(), ...save.upgrades },
+    day: { storeEvent: null, talks: [], ...save.day },
+  };
 }
 
 const isNumber = (x) => typeof x === 'number' && Number.isFinite(x);
@@ -120,10 +172,22 @@ export function validate(save) {
     'pending',
   );
   check(isObject(save?.upgrades) && isObject(save.upgrades.extraShelves), 'upgrades');
-  check(isObject(save?.restock) && isObject(save.restock.orders), 'restock');
-  check(isObject(save?.records), 'records');
+  check(
+    isObject(save?.restock) && isObject(save.restock.orders) && (save.restock.lots === undefined || Array.isArray(save.restock.lots)),
+    'restock',
+  );
+  check(save?.promotions === undefined || Array.isArray(save.promotions), 'promotions');
+  check(save?.stories === undefined || (isObject(save.stories) && Object.values(save.stories).every(isObject)), 'stories');
+  check(save?.featured === undefined || save.featured === null || (isObject(save.featured) && typeof save.featured.songId === 'string'), 'featured');
+  // cada disco é um objeto, com estoque numérico (estoque NaN viraria venda infinita)
+  check(
+    isObject(save?.records) &&
+      Object.values(save.records).every((r) => isObject(r) && (r.stock === undefined || (isNumber(r.stock) && r.stock >= 0))),
+    'records',
+  );
+  check(save?.regulars === undefined || (isObject(save.regulars) && Object.values(save.regulars).every(isObject)), 'regulars');
   check(Array.isArray(save?.processedPlays), 'processedPlays');
-  check(isObject(save?.stats), 'stats');
+  check(isObject(save?.stats) && Object.values(save.stats).every(isNumber), 'stats');
   check(Array.isArray(save?.history), 'history');
   return errors;
 }
