@@ -4,9 +4,9 @@ Simulador de **loja de discos** que se move com a sua performance no [Fretshift]
 Cada música da sua biblioteca do Fretshift vira um disco na prateleira; tocar bem esse disco no
 Fretshift enche a loja de clientes, vende mais e aumenta a fama da loja.
 
-> **Situação:** as cinco etapas feitas: loja jogável, pedidos, estoque e eventos, loja ao vivo com o
-> Fretshift, show da banda e lojas rivais (amigos, referência do disco, disco da semana). Roteiro em
-> [`docs/roteiro`](docs/roteiro/index.md).
+> **Situação:** as seis etapas feitas: loja jogável, pedidos, estoque e eventos, loja ao vivo com o
+> Fretshift, show da banda, lojas rivais (amigos, referência do disco, disco da semana) e clientes
+> fixos (personagens que voltam e têm história). Roteiro em [`docs/roteiro`](docs/roteiro/index.md).
 
 ## A ideia em uma frase
 
@@ -29,6 +29,23 @@ npm run icone                  # refaz build/icon.png
 Baixe `VinilHero-Setup-x.y.z.exe` nos [Releases](https://github.com/LCavarcan/VinilHero/releases/latest)
 e rode. Depois disso o jogo se atualiza sozinho: quando uma versão nova termina de baixar, aparece
 **Reiniciar para atualizar** na barra de cima (ou ela é instalada ao fechar o jogo). A loja fica salva.
+
+### Requisitos do PC
+
+| | Mínimo | Recomendado |
+|---|---|---|
+| Sistema | Windows 10 64-bit | Windows 10/11 64-bit |
+| Processador | dual-core x64 | quad-core |
+| Memória | 4 GB | 8 GB (com o Fretshift aberto junto) |
+| Vídeo | qualquer placa integrada com DirectX 11 | — |
+| Tela | 960×640 (tamanho mínimo da janela) | 1280×820 ou maior |
+| Disco | 400 MB livres | 400 MB livres |
+| Outros | Fretshift instalado | porta 47321 livre, para a loja ao vivo |
+
+O VinilHero é leve: a loja é pixel art em Canvas 2D (320×120, ampliada), sem WebGL. Aberto e parado,
+usa cerca de 250 MB de memória (380 MB de working set, 4 processos do Electron) e ~0% de CPU (medido
+na v0.4.0). Instalado ocupa ~375 MB. Quem pesa mais é o Fretshift, que roda junto: confira os
+requisitos dele.
 
 Para publicar uma versão:
 
